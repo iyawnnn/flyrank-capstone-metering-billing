@@ -6,5 +6,13 @@ export const findTenantById = (
 ) =>
   transaction.tenant.findUnique({
     where: { id: tenantId },
-    select: { id: true },
+    select: {
+      id: true,
+      plan: {
+        select: {
+          monthlyApiCallLimit: true,
+          monthlyTokenLimit: true,
+        },
+      },
+    },
   });

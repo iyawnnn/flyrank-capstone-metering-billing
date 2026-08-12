@@ -69,3 +69,17 @@ Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
 - Four concurrent matching requests all returned 200 while database event count remained two.
 - npm run db:generate and npx prisma validate passed.
 
+
+## Phase 4 proof
+
+Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+
+- npm run typecheck and npm run build passed.
+- npm test passed 4 files and 25 tests: 8 quota, 12 generate/idempotency, 4 seed, and 1 health test.
+- Free tenants successfully reached exactly 1,000 API calls and exactly 100,000 AI tokens.
+- At-limit and over-limit requests returned 429 with usageType, used, requested, limit, and UTC YYYY-MM period.
+- Database assertions confirmed rejected requests created zero UsageEvent and zero IdempotencyKey rows.
+- A Pro tenant above both Free thresholds succeeded under its 50,000-call and 5,000,000-token limits.
+- Two concurrent requests for one remaining API-call slot produced one 200, one 429, two usage rows, and one idempotency row.
+- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+

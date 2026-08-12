@@ -17,7 +17,7 @@
 
 ## Phase 4: Quota enforcement
 
-**Goal:** Prevent projected monthly usage above plan limits. **Tasks:** UTC month boundaries, both usage checks, inclusive exact-limit rule, structured `429`/documented `402`, atomic check/write strategy. **Gate:** just-under and exactly-at pass; over fails without writes. **Evidence:** boundary test output and JSON failures.
+**Status:** Complete. **Goal:** Prevent projected monthly usage above plan limits. **Delivered:** UTC month windows, quantity rollups for both usage types, plan-specific limits, inclusive exact-limit behavior, deterministic API-first 429 errors, and quota checks inside the serializable metering transaction. No 402 policy was added because payment-required behavior remains deferred. **Gate:** exact-limit passes; at/over-limit fails without usage or idempotency writes; concurrent boundary requests cannot both pass. **Evidence:** Phase 4 integration tests and full suite output.
 
 ## Phase 5: Cost calculation
 

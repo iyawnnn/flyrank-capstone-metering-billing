@@ -67,3 +67,18 @@ Implemented integration coverage verifies:
 - The same key succeeds independently for two tenants.
 - Four concurrent identical attempts return one response and produce one billable operation.
 - Existing Phase 2 seed tests continue to pass.
+
+## Phase 4 monthly quota coverage
+
+Implemented integration coverage verifies:
+
+- Free usage at 999 API calls may record the 1,000th call.
+- Free usage at or above 1,000 API calls rejects another call with 429.
+- Free usage at 99,999 AI tokens may record the 100,000th token.
+- Free usage at 100,000 AI tokens rejects additional tokens with 429.
+- Rejections persist no request usage and no successful idempotency response.
+- Error details contain usageType, used, requested, limit, and YYYY-MM UTC period.
+- API_CALL is the deterministic first error if both quotas would fail.
+- A Pro tenant above Free thresholds remains allowed under Pro limits.
+- Successful idempotency replay happens before quota evaluation.
+- Concurrent requests at the last available API-call slot produce one success and one rejection.

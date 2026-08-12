@@ -142,3 +142,21 @@ With the PostgreSQL service running and seed data loaded:
       -d "{\"inputTokens\":1000,\"cachedInputTokens\":200,\"outputTokens\":500,\"reasoningTokens\":100}"
 
 The first request records one API call and 1,800 AI tokens. Repeating the same tenant, key, and body returns the stored response without recording usage again. Pricing is intentionally zero until Phase 5, and quotas are intentionally not enforced until Phase 4.
+
+### Quota rejection example
+
+When a Free tenant is already at 100,000 monthly AI tokens, another token request returns HTTP 429:
+
+    {
+      "error": "quota_exceeded",
+      "message": "AI token quota exceeded for the current month.",
+      "quota": {
+        "usageType": "AI_TOKENS",
+        "used": 100000,
+        "requested": 1,
+        "limit": 100000,
+        "period": "YYYY-MM"
+      }
+    }
+
+Monthly periods use UTC. Reaching a limit exactly is allowed; exceeding it is rejected without usage or idempotency writes.

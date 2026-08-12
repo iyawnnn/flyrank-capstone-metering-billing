@@ -10,6 +10,7 @@ import type {
 import { findTenantById } from "../tenants/tenant.repository.js";
 import { findIdempotencyRecord } from "./idempotency.service.js";
 import { createRequestHash } from "./request-hash.js";
+import { enforceMonthlyQuota } from "../quotas/quota.service.js";
 
 export class TenantNotFoundError extends Error {
   constructor() {
@@ -98,6 +99,8 @@ export const meterGeneration = async (
             throw new TenantNotFoundError();
           }
 
+          await enforceMonthlyQuota(transaction, tenant, aiTokens);
+
           const response: GenerateResponse = {
             tenantId: input.tenantId,
             idempotencyKey: input.idempotencyKey,
@@ -118,7 +121,7 @@ export const meterGeneration = async (
                 idempotencyKey: input.idempotencyKey,
                 requestHash,
                 costMicroCents: 0n,
-                metadata: { phase: 3, simulated: true },
+                metadata: { phase: 4, simulated: true },
               },
               {
                 tenantId: input.tenantId,
@@ -161,5 +164,6 @@ export const meterGeneration = async (
 
   throw new Error("Transaction retry limit reached.");
 };
+
 
 

@@ -7,6 +7,7 @@ import {
   meterGeneration,
   TenantNotFoundError,
 } from "../metering/metering.service.js";
+import { QuotaExceededError } from "../quotas/quota.service.js";
 
 const readRequiredHeader = (
   request: FastifyRequest,
@@ -82,7 +83,16 @@ export const registerGenerateRoutes = (
           .send(errorBody("IDEMPOTENCY_KEY_CONFLICT", error.message));
       }
 
+      if (error instanceof QuotaExceededError) {
+        return reply.code(429).send({
+          error: "quota_exceeded",
+          message: error.message,
+          quota: error.quota,
+        });
+      }
+
       throw error;
     }
   });
 };
+

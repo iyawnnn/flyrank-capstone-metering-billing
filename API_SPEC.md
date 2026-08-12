@@ -4,7 +4,7 @@ Fastify serves the HTTP API. All responses are JSON except that Stripe sends the
 
 ## `GET /health`
 
-**Purpose:** Process liveness check. **Headers/body:** None. **Success `200`:** `{ "status": "ok" }`. **Errors:** unexpected `500`. **Notes:** This is the only endpoint implemented through Phase 2.5 and does not check database readiness.
+**Purpose:** Process liveness check. **Headers/body:** None. **Success `200`:** `{ "status": "ok" }`. **Errors:** unexpected `500`. **Notes:** This endpoint does not check database readiness.
 
 ## `POST /seed`
 
@@ -44,8 +44,25 @@ All four fields are required nonnegative safe integers, unknown fields are rejec
 
 A new request writes exactly one API_CALL event with quantity 1, one AI_TOKENS event with the sum of all four categories, and one tenant-scoped idempotency response. Both events share the key and canonical SHA-256 request hash. Phase 3 stores costMicroCents as zero.
 
-**Errors:** 400 for missing headers or invalid body; 404 for an unknown tenant; 409 when the same tenant/key is reused with a different validated body; 500 for unexpected failures. Quota and payment errors are not active until Phase 4.
+**Errors:** 400 for missing headers or invalid body; 404 for an unknown tenant; 409 when the same tenant/key is reused with a different validated body; 429 when a projected monthly quota is exceeded; 500 for unexpected failures. Payment-required behavior is not active.
 
+**Quota enforcement:** Current usage is the sum of UsageEvent quantities for the tenant in the UTC calendar-month window [month start, next month start). A projected total equal to the plan limit succeeds; a projected total greater than the limit returns 429. API_CALL is evaluated before AI_TOKENS when both would fail.
+
+**Quota error 429:**
+
+    {
+      "error": "quota_exceeded",
+      "message": "AI token quota exceeded for the current month.",
+      "quota": {
+        "usageType": "AI_TOKENS",
+        "used": 100000,
+        "requested": 1,
+        "limit": 100000,
+        "period": "2026-08"
+      }
+    }
+
+A quota rejection creates neither usage events nor an idempotency response. A previously successful matching retry is replayed before quota evaluation, so it remains available after the original request reaches the limit.
 The same tenant/key/hash replays the originally stored status and stable response without additional events. The same key is independent across tenants. Writes run in a serializable transaction with bounded retry handling for serialization and uniqueness races.
 ## `GET /usage`
 
@@ -90,6 +107,8 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Success `200`:** `{ "received": true, "duplicate": false }`; duplicate delivery returns the same with `duplicate: true` and performs no second state transition.
 
 **Errors:** `400` missing/invalid signature or malformed payload; `500` transient processing failure so Stripe may retry. **Notes:** Raw-body middleware must precede normal JSON parsing. Supported types are `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Only verified events may update subscription/plan status; unhandled verified types are acknowledged without a domain update.
+
+
 
 
 
