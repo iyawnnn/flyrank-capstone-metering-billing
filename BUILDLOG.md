@@ -200,3 +200,37 @@ YYYY-MM-DD
 ### Tests/evidence added
 
 - Added eight integration scenarios covering API/token boundaries, rejection atomicity, error details, Pro limits, replay behavior, and concurrent last-slot safety.
+
+---
+
+## 2026-08-12 — Phase 5 deterministic integer pricing
+
+### What was built
+
+- Added pinned BigInt pricing configuration and pure pricing services.
+- Added separate category pricing with ceiling division per category.
+- Replaced zero placeholder costs with exact API and AI-token UsageEvent costs.
+- Added a stable cost summary to new and replayed POST /generate responses.
+
+### AI assistance used
+
+- Used AI to derive integer-safe formulas, integrate BigInt persistence with JSON-safe responses, and build exact pricing fixtures.
+
+### What AI got wrong
+
+- The first mechanical edit did not replace the two zero-cost lines because their newline formatting differed.
+
+### What was changed manually
+
+- Corrected the two UsageEvent assignments and normalized their formatting before verification.
+
+### Decisions made
+
+- Money is computed and persisted as bigint micro-cents.
+- Each token category is multiplied by its own per-million rate and ceiling-divided independently.
+- Reasoning uses the output rate.
+- HTTP cost values are converted to numbers only after a safe-integer assertion.
+
+### Tests/evidence added
+
+- Added eight pure pricing tests and updated generate integration assertions for stored and returned costs.

@@ -129,6 +129,11 @@ describe.sequential("POST /generate", () => {
       idempotencyKey: key,
       simulated: true,
       usage: { apiCalls: 1, aiTokens: 1_800 },
+      cost: {
+        apiCallMicroCents: 10,
+        aiTokensMicroCents: 405,
+        totalMicroCents: 415,
+      },
       message: "Simulated generation completed.",
     });
 
@@ -145,7 +150,14 @@ describe.sequential("POST /generate", () => {
       events.find((event) => event.usageType === UsageType.AI_TOKENS)?.quantity,
     ).toBe(1_800);
     expect(new Set(events.map((event) => event.requestHash)).size).toBe(1);
-    expect(events.every((event) => event.costMicroCents === 0n)).toBe(true);
+    expect(
+      events.find((event) => event.usageType === UsageType.API_CALL)
+        ?.costMicroCents,
+    ).toBe(10n);
+    expect(
+      events.find((event) => event.usageType === UsageType.AI_TOKENS)
+        ?.costMicroCents,
+    ).toBe(405n);
   });
 
   it("replays the exact response without creating more usage events", async () => {
@@ -239,3 +251,4 @@ describe.sequential("POST /generate", () => {
     ).toBe(2);
   });
 });
+

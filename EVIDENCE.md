@@ -83,3 +83,18 @@ Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
 - Two concurrent requests for one remaining API-call slot produced one 200, one 429, two usage rows, and one idempotency row.
 - npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
 
+
+## Phase 5 proof
+
+Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+
+- npm run typecheck and npm run build passed.
+- npm test passed 5 files and 33 tests: 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
+- Pure pricing assertions confirmed rates of 10 per API call and 100,000/25,000/500,000 micro-cents per million input/cached/output tokens.
+- Reasoning matched the 500,000 output rate.
+- The 1,000/200/500/100 fixture produced category costs 100/5/250/50, AI-token cost 405, API cost 10, and total cost 415.
+- One token in each category produced one micro-cent per category, proving ceiling rounding.
+- Integration assertions confirmed UsageEvent BIGINT costs of 10 and 405 and an exact replayed response total of 415.
+- Existing quota, idempotency, concurrency, seed, and health tests remained green.
+- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+

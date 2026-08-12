@@ -160,3 +160,27 @@ When a Free tenant is already at 100,000 monthly AI tokens, another token reques
     }
 
 Monthly periods use UTC. Reaching a limit exactly is allowed; exceeding it is rejected without usage or idempotency writes.
+
+## Pricing
+
+All internal money uses integer micro-cents.
+
+| Billable category | Pinned rate |
+| --- | ---: |
+| API call | 10 micro-cents per call |
+| Normal input | 100,000 micro-cents per 1,000,000 tokens |
+| Cached input | 25,000 micro-cents per 1,000,000 tokens |
+| Output | 500,000 micro-cents per 1,000,000 tokens |
+| Reasoning | 500,000 micro-cents per 1,000,000 tokens |
+
+Each token category is priced separately. Division rounds upward whenever a nonzero category has a fractional micro-cent cost. The category costs are then summed; token categories are never combined under one rate.
+
+For the documented 1,000 input, 200 cached input, 500 output, and 100 reasoning request:
+
+- Input: 100 micro-cents
+- Cached input: 5 micro-cents
+- Output: 250 micro-cents
+- Reasoning: 50 micro-cents
+- AI-token total: 405 micro-cents
+- API call: 10 micro-cents
+- Total: 415 micro-cents
