@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanName {
+  FREE
+  PRO
+}
+
+enum UsageType {
+  API_CALL
+  AI_TOKENS
+}
+
+enum SubscriptionStatus {
+  FREE
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+model Plan {
+  id                  String   @id @default(cuid())
+  name                PlanName @unique
+  monthlyApiCallLimit Int
+  monthlyTokenLimit   Int
+  stripePriceId       String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  tenants             Tenant[]
+}
+
+model Tenant {
+  id                 String             @id @default(cuid())
+  name               String
+  planId             String
+  stripeCustomerId   String?            @unique
+  subscriptionStatus SubscriptionStatus @default(FREE)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  plan               Plan               @relation(fields: [planId], references: [id])
+  subscriptions      Subscription[]
+  usageEvents        UsageEvent[]
+  idempotencyKeys    IdempotencyKey[]
+
+  @@index([planId])
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  tenantId             String
+  stripeSubscriptionId String?            @unique
+  stripeCustomerId     String
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model UsageEvent {
+  id             String    @id @default(cuid())
+  tenantId       String
+  usageType      UsageType
+  quantity       Int
+  idempotencyKey String
+  requestHash    String
+  costMicroCents BigInt
+  metadata       Json?
+  createdAt      DateTime  @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, usageType])
+}
+
+model IdempotencyKey {
+  id             String   @id @default(cuid())
+  tenantId       String
+  key            String
+  requestHash    String
+  responseStatus Int
+  responseBody   Json
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, key])
+}
+
+model StripeEvent {
+  id            String    @id @default(cuid())
+  stripeEventId String    @unique
+  type          String
+  processedAt   DateTime?
+  createdAt     DateTime  @default(now())
+}

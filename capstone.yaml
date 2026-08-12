@@ -1,0 +1,22 @@
+name: flyrank-capstone-metering-billing
+title: Multi-Tenant LLM Usage Metering & Billing Engine
+framework: Fastify
+run_command: npm run dev
+seed_command: npm run db:seed
+test_command: npm test
+base_url: http://localhost:3000
+endpoints_to_probe:
+  - method: GET
+    path: /health
+  - method: POST
+    path: /seed
+  - method: POST
+    path: /generate
+  - method: GET
+    path: /usage
+  - method: POST
+    path: /billing/checkout
+  - method: POST
+    path: /webhooks/stripe
+
+

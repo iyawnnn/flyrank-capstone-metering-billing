@@ -1,0 +1,48 @@
+# Delivery Phases
+
+## Phase 1: Project setup and docs
+
+**Goal:** Establish a reviewable, runnable foundation without domain logic. **Tasks:** package/TypeScript/Vitest config, Docker PostgreSQL, Prisma placeholder, layered folders, env/ignore files, required docs. **Gate:** dependencies install; typecheck, build, and smoke test pass; no secret or business implementation exists. **Evidence:** file tree and command output in setup/run proof.
+
+## Phase 2: Database schema and seed data
+
+**Goal:** Encode tenant, plan, subscription, usage, idempotency, and webhook identities. **Tasks:** implement reviewed Prisma models/enums/relations/indexes; migration; shared client; idempotent Free/Pro/demo/near-quota seed. Pin the Pro limits. **Gate:** clean database migrates and seed reruns without duplicates. **Evidence:** migration/status, seed output, representative database rows.
+
+## Phase 2.5: Fastify framework migration
+
+**Goal:** Standardize the backend HTTP layer on Fastify before domain routes begin. **Tasks:** replace the prior HTTP framework dependencies/code with Fastify, preserve the app/server split, expose a testable Fastify factory, and test GET /health through injection. **Gate:** typecheck, build, health injection test, and existing database seed tests pass; no domain endpoint is added. **Evidence:** dependency diff and verification output.
+## Phase 3: Usage metering and idempotency
+
+**Status:** Complete. **Goal:** Record each successful billable operation once under retries/concurrency. **Delivered:** strict token validation, tenant context, canonical SHA-256 request hashing, layered repository/service/route code, serializable transaction with bounded retries, exact response replay, 409 hash conflict, and two usage records per new request. **Gate:** validation, duplicate, conflict, tenant-scope, quantity, rollback, and concurrent retry tests pass. **Evidence:** Phase 3 integration suite and database assertions.
+
+## Phase 4: Quota enforcement
+
+**Goal:** Prevent projected monthly usage above plan limits. **Tasks:** UTC month boundaries, both usage checks, inclusive exact-limit rule, structured `429`/documented `402`, atomic check/write strategy. **Gate:** just-under and exactly-at pass; over fails without writes. **Evidence:** boundary test output and JSON failures.
+
+## Phase 5: Cost calculation
+
+**Goal:** Produce deterministic integer costs per usage category. **Tasks:** pin micro-cent rates, separately price normal input/cached input/output/reasoning, price API calls, metadata, pure unit tests. **Gate:** hand-calculated fixtures match; no floating-point money. **Evidence:** config excerpt and focused test results.
+
+## Phase 6: Usage summary endpoint
+
+**Goal:** Answer monthly used/limit/cost questions per tenant. **Tasks:** tenant-scoped aggregates, plan/subscription projection, UTC period, response/controller tests. **Gate:** fixture rollups match and exclude other periods/tenants. **Evidence:** `/usage` response and integration tests.
+
+## Phase 7: Stripe Checkout
+
+**Goal:** Start a Pro upgrade through Stripe test mode. **Tasks:** validated test-key config, customer reuse/creation, subscription Checkout, configured price, tenant metadata, safe URLs/errors. **Gate:** test-mode Session URL returned and no pre-webhook plan upgrade. **Evidence:** redacted Checkout/Stripe test object and test output.
+
+## Phase 8: Stripe webhooks
+
+**Goal:** Synchronize only verified events and tolerate duplicate delivery. **Tasks:** raw-body route ordering, signature verification, unique event claim, three required event handlers, transactional subscription/plan update. **Gate:** forged event has zero mutations; valid duplicate applies once; deletion/update behavior is correct. **Evidence:** Stripe CLI delivery, forged rejection, replay response, database state.
+
+## Phase 9: Tests and evidence
+
+**Goal:** Turn correctness claims into reproducible proof. **Tasks:** complete [TEST_PLAN.md](TEST_PLAN.md), coverage, clean-install run, fill evidence, review errors/secrets/tenant isolation. **Gate:** deterministic full suite passes from documented setup and every required evidence section is populated. **Evidence:** full logs and linked artifacts.
+
+## Phase 10: Demo polish
+
+**Goal:** Present a concise end-to-end portfolio demonstration. **Tasks:** verify README commands, scripted/manual demo flow, reset instructions, diagrams, limitations, final repository hygiene. **Gate:** a reviewer can seed, hit quota, prove replay safety, upgrade in Stripe, reject/replay webhooks, and inspect usage without undocumented steps. **Evidence:** dated end-to-end transcript or short recording and final checklist.
+
+
+
+

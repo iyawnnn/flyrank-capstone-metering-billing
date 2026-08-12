@@ -1,0 +1,69 @@
+# Test Plan
+
+Tests use Vitest, deterministic timestamps, isolated PostgreSQL records, mocked Stripe SDK boundaries, and real service/repository behavior where practical. Each database test cleans only its own fixtures.
+
+## Metering and idempotency
+
+- Send an identical request twice with one tenant/key; assert exactly one API-call event and one token event (one billable operation).
+- Assert the duplicate response deeply equals the stored original response/status.
+- Reuse the key with a changed body; assert `409` and no additional usage.
+- Use the same key for two tenants; assert independent successful operations.
+- Race identical requests; assert the unique constraint/transaction produces one operation.
+
+## Quotas
+
+- Project usage just under each limit; success.
+- Project usage exactly to each limit; success (documented inclusive boundary).
+- Project one unit over API-call and token limits separately; `429`, clear details, no usage write.
+- Assert any `402` upgrade-required policy is distinguishable from raw quota exhaustion.
+
+## Pricing
+
+- API-call cost uses pinned integer math.
+- Input, cached input, and output categories produce the expected deterministic total.
+- Cached input receives its cheaper configured rate rather than normal input pricing.
+- Reasoning tokens receive the output-token rate.
+- Category costs are calculated separately before summing; no floating point enters money values.
+- Zero-token request behavior follows the validated contract while still counting an API call.
+
+## Usage and validation
+
+- `/usage` returns correct tenant, plan, subscription status, used/limit/cost, and UTC period.
+- Exclude prior/future period and other-tenant events.
+- Missing headers, negative/fractional/unsafe token values, unknown fields (per chosen strictness), and malformed JSON return clean 4xx JSON rather than `500`.
+
+## Stripe
+
+- Forged/missing signature returns `400`, creates no StripeEvent, and changes no tenant/subscription state.
+- Valid duplicate Stripe event returns success but applies its state transition once.
+- Verified `checkout.session.completed` maps metadata to the tenant and flips Free to Pro with subscription state.
+- Verified subscription update synchronizes status and period.
+- Verified subscription deletion returns the tenant to the documented Free/inactive state.
+- Unhandled verified event is acknowledged without mutation.
+- Confirm the raw payload, not parsed/re-serialized JSON, is supplied to signature verification.
+
+## Evidence expectations
+
+Capture concise command output for full suite/coverage, targeted idempotency/quota/pricing/webhook tests, and manual HTTP demonstrations. Redact all secrets, signatures, Checkout URLs as appropriate, and customer-identifying values before adding evidence.
+
+
+## Fastify HTTP foundation
+
+- Build the service through the app factory without starting a network listener.
+- Use Fastify inject to call GET /health.
+- Assert status 200 and the exact JSON body with status set to ok.
+- Close each Fastify instance after its test.
+
+## Phase 3 metering and idempotency coverage
+
+Implemented integration coverage verifies:
+
+- Missing tenant and idempotency headers return 400.
+- Unknown tenant returns 404.
+- Negative, fractional, all-zero, and incomplete bodies return 400 with no writes.
+- A new request writes one API_CALL and one summed AI_TOKENS event.
+- A matching retry returns the byte-identical original response and keeps two events.
+- A changed body with the same tenant/key returns 409 and keeps two events.
+- The same key succeeds independently for two tenants.
+- Four concurrent identical attempts return one response and produce one billable operation.
+- Existing Phase 2 seed tests continue to pass.
