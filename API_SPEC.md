@@ -138,20 +138,44 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Behavior:** The service reuses Tenant.stripeCustomerId when present. Otherwise it creates a Stripe customer with tenantId metadata and persists the returned customer ID. It then creates a Session with mode subscription, one configured STRIPE_PRO_PRICE_ID line item, tenantId in both Session and subscription metadata, and APP_BASE_URL-derived success/cancel URLs.
 
 Only sk_test_ secret keys are accepted by environment validation. Errors never return keys or Stripe exception details. Checkout creation does not change planId or subscriptionStatus and does not grant Pro access; only a future verified Phase 8 webhook may do that.
-## `POST /webhooks/stripe`
+## POST /webhooks/stripe
 
-**Purpose:** Verify and consume supported Stripe subscription events.
+**Status:** Implemented in Phase 8.
 
-**Headers:** Required `stripe-signature`; `Content-Type: application/json`. **Body:** Raw, unmodified Stripe payload.
+**Purpose:** Verify and transactionally consume Stripe subscription lifecycle events.
 
-**Success `200`:** `{ "received": true, "duplicate": false }`; duplicate delivery returns the same with `duplicate: true` and performs no second state transition.
+**Headers:** Required stripe-signature and Content-Type application/json. **Body:** The exact unmodified Stripe JSON bytes.
 
-**Errors:** `400` missing/invalid signature or malformed payload; `500` transient processing failure so Stripe may retry. **Notes:** Raw-body middleware must precede normal JSON parsing. Supported types are `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Only verified events may update subscription/plan status; unhandled verified types are acknowledged without a domain update.
+**Success 200:**
 
+    {
+      "received": true,
+      "duplicate": false,
+      "ignored": false
+    }
 
+A duplicate event returns duplicate true. An unsupported but verified event returns ignored true.
 
+**Errors:** 400 for a missing/invalid signature or non-raw payload; 503 when STRIPE_WEBHOOK_SECRET is absent/invalid; 422 when a verified supported event cannot resolve required tenant/plan/subscription data; 500 for unexpected transient database failures.
 
+**Raw-body verification:** The Fastify app replaces its JSON parser with a buffer parser. Only this exact route receives the Buffer; all other JSON routes are parsed normally. Stripe SDK constructEvent receives the Buffer, stripe-signature, and STRIPE_WEBHOOK_SECRET before any event data is trusted.
 
+**Deduplication:** A serializable transaction checks and creates unique StripeEvent.stripeEventId, applies all projections, and sets processedAt. A duplicate returns 200 without another state transition. Any processing failure rolls back both the claim and domain writes.
 
+**Supported events:**
 
+- checkout.session.completed: requires complete status and verified Session metadata tenantId, customer, and subscription IDs; upserts Subscription and sets the tenant to Pro/ACTIVE.
+- customer.subscription.updated: resolves by metadata tenantId, then stored subscription ID, then customer ID; updates status and period timestamps.
+- customer.subscription.deleted: resolves the same way, marks a stored Subscription CANCELED when present, and sets the tenant to Free/CANCELED.
+- Other verified event types are recorded and acknowledged as ignored.
 
+**Status mapping:**
+
+| Stripe status | Tenant plan | Tenant/Subscription status |
+| --- | --- | --- |
+| active, trialing | Pro | ACTIVE |
+| past_due | Pro | PAST_DUE |
+| canceled, unpaid | Free | CANCELED |
+| incomplete, incomplete_expired | Free | INCOMPLETE |
+
+No query parameter or unverified request field is used to choose a tenant. Errors do not expose webhook secrets or Stripe SDK details.

@@ -128,3 +128,19 @@ Mocked integration coverage verifies:
 - The response contains checkoutUrl and sessionId.
 - Checkout creation leaves planId, Free plan, and subscriptionStatus unchanged.
 - No real Stripe network call occurs during npm test.
+
+## Phase 8 Stripe webhook coverage
+
+Mocked signature and database integration coverage verifies:
+
+- Missing signature and forged signatures return 400.
+- The verifier receives a Buffer containing the original request bytes.
+- Forged events change no tenant/subscription state and create no StripeEvent.
+- Verified checkout completion upgrades Free to Pro/ACTIVE, saves customer ID, and creates Subscription.
+- Duplicate checkout completion returns 200 and keeps one StripeEvent/Subscription.
+- Active and past_due updates map to the documented Pro statuses and save periods.
+- Missing update metadata falls back to the stored subscription identity.
+- Deletion maps to Free/CANCELED and is duplicate-safe.
+- Unknown verified events return 200 ignored and receive processedAt.
+- Unresolvable verified events return 422 and roll back the event claim.
+- Existing Checkout, usage, pricing, quota, idempotency, seed, and health suites remain covered.
