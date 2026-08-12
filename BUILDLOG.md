@@ -339,3 +339,98 @@ YYYY-MM-DD
 
 - Added thirteen route/database scenarios for signatures, raw bytes, projections, fallbacks, duplicates, ignored events, and rollback.
 
+
+---
+
+## 2026-08-12 — Phase 9 evidence, hardening, and demo verification
+
+### What was reviewed
+
+- Audited README.md, capstone.yaml, EVIDENCE.md, BUILDLOG.md, .env.example, .gitignore, commands, endpoint inventory, and implemented behavior.
+- Reviewed raw webhook verification, sanitized Stripe errors, tenant-scoped reads/writes, generated artifacts, dependency audit, and credential-shaped patterns.
+- Confirmed the Prisma schema required no Phase 9 change or migration.
+
+### What evidence was added
+
+- Consolidated metering, idempotency, quota, pricing, usage, Checkout, webhook signature, duplicate event, database/seed, test, coverage, setup, and secret-hygiene proof.
+- Recorded 8 passing test files, 60 passing tests, and aggregate coverage of 86.06% statements, 82.80% branches, 89.70% functions, and 86.06% lines.
+- Recorded successful typecheck, build, Prisma generation/validation/migration status, seed rerun, and npm audit with zero vulnerabilities.
+
+### Manual checks prepared
+
+- Added MANUAL_TESTING.md with exact local database/API startup, health, generate/retry/conflict, quota, usage, Checkout, Stripe CLI forwarding, event resend, forgery, verification, and reset steps.
+- Marked real Stripe CLI and hosted Checkout artifacts as manual because credentials are intentionally absent.
+
+### AI assistance used
+
+- Used AI to audit documentation against implementation, consolidate evidence, design reproducible redacted demo commands, interpret coverage, and run secret/ignore checks.
+
+### What AI got wrong
+
+- The first detached compiled-server health probe did not become reachable in the managed Windows process harness; the seed succeeded, build passed, and route health remains proven through Fastify injection. This limitation is recorded instead of overstating runtime evidence.
+- The first MANUAL_TESTING.md write used PowerShell continuation characters that conflicted with the orchestration script; it was rewritten with portable single-line curl commands.
+
+### What was corrected manually
+
+- Removed the unimplemented POST /seed probe from capstone.yaml and documented npm run db:seed as the supported seed interface.
+- Removed stale README statements that claimed only /health existed or that pricing/quota/webhooks were future work.
+- Reorganized README into one coherent setup, API, security, Stripe, demo, and limitation guide.
+
+### Decisions and limitations
+
+- No production feature, schema, migration, or deployment work was added.
+- Coverage is documented rather than forced to 100%; process startup, real Stripe network adapters, and types/config placeholders are the principal gaps.
+- Real Stripe CLI proof must be added manually with test-mode credentials and redaction.
+- x-tenant-id remains capstone tenant context, not production authentication.
+
+### Tests/evidence added
+
+- No new business behavior tests were necessary.
+- Re-ran the complete suite and V8 coverage plus all required build, Prisma, migration, audit, seed, ignore, and credential scans.
+
+---
+
+## 2026-08-12 — Phase 9 repository cleanup and consistency hardening
+
+### What was reviewed
+
+- Rechecked package.json/package-lock.json against runtime imports, test imports, and npm scripts.
+- Reviewed all planning, architecture, API, schema, test, evidence, submission, environment, and manual-demo documents against implemented behavior.
+- Rechecked tracked and ignored artifacts, credential-shaped patterns, Stripe error responses, and endpoint inventory.
+
+### Stale content corrected
+
+- Removed the nonexistent POST /seed contract from API_SPEC.md; npm run db:seed remains the supported interface.
+- Removed future-tense webhook wording and the obsolete optional 402 statement.
+- Updated architecture concurrency language to describe the implemented serializable transaction and bounded retries.
+- Updated Subscription documentation to describe implemented verified-event synchronization.
+- Standardized outstanding real Stripe evidence as: TODO: paste manual Stripe CLI transcript after local demo run.
+- Removed unused Phase 1 middleware/config stubs and obsolete .gitkeep files.
+
+### Dependencies checked
+
+- Confirmed every direct runtime dependency is imported: Fastify, Prisma Client, dotenv, Stripe, and Zod.
+- Confirmed every development dependency supports a script, compiler, generated client, coverage, or test workflow.
+- Confirmed Express is absent and Fastify is the only HTTP framework.
+- No dependency was removed because none was unused.
+
+### Security checks run
+
+- Verified .env, node_modules, dist, coverage, logs, and local database files are ignored.
+- Scanned repository content for credential-shaped Stripe test/live keys and real webhook secrets.
+- Reviewed Stripe route errors for sanitization and confirmed no raw SDK exception is returned.
+- Confirmed generated artifacts are ignored and no real .env exists.
+
+### Remaining manual testing/demo work
+
+- Run a real Stripe test-mode Checkout.
+- Capture a redacted signed Stripe CLI webhook delivery.
+- Resend the exact event and capture duplicate true.
+- Capture post-webhook Pro/ACTIVE usage state.
+- Capture npm run dev plus GET /health from the final demo environment.
+
+### Final command verification note
+
+- Typecheck, build, all 60 tests, and coverage passed after placeholder removal.
+- The first Prisma generation attempt encountered a Windows EPERM rename because a prior workspace server probe still held the generated query-engine DLL.
+- The identified process was specifically node dist/src/server.js from this workspace; after stopping it, Prisma generation, schema validation, migration status, npm audit, Express absence, and Fastify presence all passed.

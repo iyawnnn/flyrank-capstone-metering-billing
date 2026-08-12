@@ -9,14 +9,32 @@ endpoints_to_probe:
   - method: GET
     path: /health
   - method: POST
-    path: /seed
-  - method: POST
     path: /generate
+    headers:
+      x-tenant-id: tenant_demo_free
+      idempotency-key: capstone-probe-generate
+      content-type: application/json
+    body:
+      inputTokens: 1000
+      cachedInputTokens: 200
+      outputTokens: 500
+      reasoningTokens: 100
   - method: GET
     path: /usage
+    headers:
+      x-tenant-id: tenant_demo_free
   - method: POST
     path: /billing/checkout
+    headers:
+      x-tenant-id: tenant_demo_free
+    requires:
+      - STRIPE_SECRET_KEY
+      - STRIPE_PRO_PRICE_ID
+      - APP_BASE_URL
   - method: POST
     path: /webhooks/stripe
-
-
+    headers:
+      content-type: application/json
+      stripe-signature: generated-by-stripe-cli
+    requires:
+      - STRIPE_WEBHOOK_SECRET

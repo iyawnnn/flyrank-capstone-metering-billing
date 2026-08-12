@@ -1,149 +1,237 @@
 # Evidence
 
-Add dated, reproducible proof as phases finish. Include command/request, relevant output, assertion demonstrated, and commit reference. Never paste secrets.
+Verified locally on 2026-08-12 against PostgreSQL 16 from docker-compose.yml. Automated Stripe tests use an injected verifier/gateway and make no network requests. Real Stripe CLI proof is explicitly marked manual because secrets are intentionally absent.
 
 ## Metering proof
 
-_Pending._
+Command:
+
+    npm test -- src/tests/generate.test.ts
+
+Included in the full run: 12 generate/idempotency tests passed.
+
+Verified assertions:
+
+- One valid request creates exactly two UsageEvents.
+- API_CALL quantity is 1.
+- AI_TOKENS quantity for 1,000/200/500/100 is 1,800.
+- Both rows share tenant, idempotency key, and canonical SHA-256 request hash.
+- Usage and stored response commit in one serializable transaction.
+- Four concurrent identical retries still produce one billable operation.
 
 ## Idempotency proof
 
-_Pending._
+The generate integration suite proved:
+
+- Matching tenant/key/hash returns the byte-identical stored response.
+- Matching retry leaves two UsageEvents and one IdempotencyKey.
+- Changed-body reuse returns 409 and adds no usage.
+- The same key succeeds independently for two tenants.
+- Validation and unknown-tenant failures create neither usage nor idempotency rows.
+
+Representative full-suite output:
+
+    Test Files  8 passed (8)
+    Tests       60 passed (60)
 
 ## Quota proof
 
-_Pending._
+The eight quota tests proved:
+
+- 999 + 1 API call succeeds at the Free limit of 1,000.
+- 99,999 + 1 AI token succeeds at the Free limit of 100,000.
+- At-limit and over-limit requests return 429.
+- Errors include usageType, used, requested, limit, and UTC YYYY-MM period.
+- API_CALL is checked first if both quotas fail.
+- Rejections create zero UsageEvent and zero IdempotencyKey rows.
+- A Pro tenant uses 50,000/5,000,000 limits.
+- Concurrent requests for one final slot produce one 200 and one 429.
+
+Manual commands are in MANUAL_TESTING.md section 6.
 
 ## Pricing proof
 
-_Pending._
+Pinned rates:
+
+| Category | Micro-cents |
+| --- | ---: |
+| API call | 10/call |
+| Input | 100,000/million |
+| Cached input | 25,000/million |
+| Output | 500,000/million |
+| Reasoning | 500,000/million |
+
+Eight pricing tests passed. The 1,000/200/500/100 fixture produced:
+
+    input=100
+    cached=5
+    output=250
+    reasoning=50
+    aiTokens=405
+    apiCall=10
+    total=415
+
+One token in each nonzero category rounds upward to one micro-cent. Internal and stored money values are bigint; JSON conversion requires a safe integer.
+
+## GET /usage rollup proof
+
+Seven usage integration tests passed:
+
+- Missing/unknown tenants return 400/404.
+- Free and Pro limits match seeded plans.
+- tenant_near_quota_free returns 999 API calls and 50,000 tokens.
+- Period boundaries are explicit UTC month start/next-month start.
+- An event one millisecond before period start is excluded.
+- API/token quantity and cost totals aggregate separately.
+- totalMicroCents equals API plus token cost.
+- A successful /generate immediately appears as 1 call, 1,800 tokens, 10/405 costs, and 415 total.
+
+Manual command: see MANUAL_TESTING.md section 7.
 
 ## Stripe Checkout proof
 
-_Pending._
+Seven mocked Checkout integration tests passed:
+
+- Missing/unknown tenants return 400/404 without Stripe calls.
+- Missing configuration returns sanitized 503.
+- A customer is created with tenantId metadata and persisted when absent.
+- Existing stripeCustomerId is reused.
+- Session uses subscription mode and configured Pro price.
+- Session and subscription metadata contain tenantId.
+- Response contains checkoutUrl and sessionId.
+- Tenant remains Free and not ACTIVE until a webhook.
+
+TODO: paste manual Stripe CLI transcript after local demo run. Also add a redacted test-mode Checkout URL or Dashboard screenshot using evaluator-owned credentials. Follow MANUAL_TESTING.md section 8 and redact IDs/secrets.
 
 ## Stripe webhook signature proof
 
-_Pending._
+Thirteen webhook integration tests passed with an injected verifier:
+
+- The verifier received a Buffer containing raw request bytes.
+- Missing and forged signatures returned 400.
+- Forged payload created zero StripeEvent, Subscription, or tenant mutations.
+- Errors exposed neither secrets nor raw Stripe SDK details.
+
+TODO: paste manual Stripe CLI transcript after local demo run. Real signed delivery requires local test-mode credentials. Follow MANUAL_TESTING.md sections 9 and 11.
 
 ## Duplicate webhook proof
 
-_Pending._
+Automated database assertions proved:
 
-## Usage rollup proof
+- Duplicate checkout.session.completed returns 200 with duplicate true.
+- One StripeEvent and one Subscription remain.
+- Duplicate customer.subscription.deleted returns 200 and applies cancellation once.
+- Unknown verified events return 200 ignored with processedAt.
+- Unresolvable verified events return 422 and roll back the event claim.
 
-_Pending._
+TODO: paste manual Stripe CLI transcript after local demo run. Resend proof requires a real test-mode event ID. Use:
+
+    stripe events resend evt_test_event_id
+
+Redact the actual event/customer/subscription identifiers in public evidence.
+
+## Database and seed proof
+
+Commands and results:
+
+    npm run db:generate
+    Prisma Client v6.19.3 generated successfully.
+
+    npx prisma validate
+    The schema at prisma/schema.prisma is valid.
+
+    npx prisma migrate status
+    2 migrations found.
+    Database schema is up to date.
+
+    npm run db:seed
+    Seeded Free/Pro plans and three deterministic demo tenants.
+
+Four seed tests proved rerun safety, two unique plans, three stable tenants, and deterministic near-quota totals.
 
 ## Test suite proof
 
-_Pending._
+Commands:
+
+    npm run typecheck
+    Exit code 0.
+
+    npm run build
+    Exit code 0.
+
+    npm test
+    Test Files  8 passed (8)
+    Tests       60 passed (60)
+
+Coverage command:
+
+    npm run test:coverage
+    Test Files  8 passed (8)
+    Tests       60 passed (60)
+    All files: 86.06% statements, 82.48% branches, 89.06% functions, 86.06% lines.
+
+High-value domain coverage includes:
+
+- Metering service: 100% statements/branches/functions/lines.
+- Quota service: 100% statements/lines/functions.
+- Tenant repository: 100%.
+- Usage service: 100%.
+- Generate routes: 97.53% statements.
+- Pricing service: 94.87% statements.
+- Webhook service: 79.72% statements.
+
+Known coverage limitations: the process entrypoint, real Stripe SDK network adapter, configuration-only/types-only files, and types-only files are not meaningfully exercised. Business-critical behavior is covered through injected Fastify/PostgreSQL integration tests.
 
 ## Setup/run proof
 
-_Pending._
+Verified:
 
+    docker compose up -d postgres
+    PostgreSQL container started and passed its configured health check.
 
-### Phase 2 database and seed proof
+    npm run db:migrate
+    Initial schema applied.
 
-Verified on 2026-08-12 against the Docker Compose PostgreSQL 16 service:
+    npm run db:seed
+    Seed completed and reran without duplicate fixtures.
 
-- npm run db:generate: Prisma Client v6.19.3 generated successfully.
-- npm run db:migrate -- --name initial_schema: initial schema created and applied.
-- npx prisma migrate deploy: numeric check migration applied; database reported all migrations successful.
-- npm run db:seed: Free/Pro plans and three deterministic demo tenants seeded.
-- npm test: 2 test files and 5 tests passed, including a second seed run.
-- Direct Prisma query returned Free limits 1,000/100,000 with two tenants and Pro limits 50,000/5,000,000 with one tenant.
-- Direct Prisma aggregation returned 999 API calls and 50,000 AI tokens for tenant_near_quota_free.
+The compiled build succeeded. A direct HTTP startup probe from the managed Windows process harness was inconclusive because the detached process exited without captured diagnostics; the Fastify app itself is exercised through injection in all route suites, including GET /health. Manual npm run dev plus curl proof remains in MANUAL_TESTING.md section 3 and should be captured during the final demo.
 
+## Secret hygiene proof
 
-## Phase 3 proof
+Ignore verification:
 
-Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+    .env       ignored by .gitignore
+    node_modules ignored
+    dist       ignored
+    coverage   ignored
+    *.log      ignored
+    *.sqlite   ignored
 
-- npm run typecheck and npm run build passed.
-- npm test passed 3 files and 17 tests: 12 generate tests, 4 seed tests, and 1 health test.
-- A 1,000 input + 200 cached input + 500 output + 100 reasoning request returned 1,800 AI tokens and persisted exactly one API_CALL plus one AI_TOKENS event.
-- Matching retries returned the byte-identical stored body while event count remained two.
-- Changed-body reuse returned 409 while event count remained two.
-- The same key created independent idempotency records for Free and Pro tenants.
-- Four concurrent matching requests all returned 200 while database event count remained two.
-- npm run db:generate and npx prisma validate passed.
+Repository scan result:
 
+    No credential-shaped live/test Stripe secrets found.
+    No sk_live_ or rk_live_ patterns found.
+    .env does not exist in the workspace.
+    .env.example contains placeholders only.
 
-## Phase 4 proof
+Dependency audit:
 
-Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+    npm audit
+    found 0 vulnerabilities
 
-- npm run typecheck and npm run build passed.
-- npm test passed 4 files and 25 tests: 8 quota, 12 generate/idempotency, 4 seed, and 1 health test.
-- Free tenants successfully reached exactly 1,000 API calls and exactly 100,000 AI tokens.
-- At-limit and over-limit requests returned 429 with usageType, used, requested, limit, and UTC YYYY-MM period.
-- Database assertions confirmed rejected requests created zero UsageEvent and zero IdempotencyKey rows.
-- A Pro tenant above both Free thresholds succeeded under its 50,000-call and 5,000,000-token limits.
-- Two concurrent requests for one remaining API-call slot produced one 200, one 429, two usage rows, and one idempotency row.
-- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+Stripe route tests also assert sanitized configuration/signature failures. Tenant routes return only the tenant named by x-tenant-id; tests verify cross-tenant idempotency isolation and tenant-specific plan/usage reads.
 
+## Manual evidence still required
 
-## Phase 5 proof
+Because the public repository contains no Stripe credentials, these artifacts cannot be generated safely in automation:
 
-Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+- A redacted Stripe test-mode Checkout page/session.
+- A Stripe CLI signed checkout.session.completed delivery returning 200.
+- A redacted post-webhook /usage response showing Pro/ACTIVE.
+- A resend of the same real event showing duplicate true.
+- A terminal screenshot of npm run dev plus curl /health.
 
-- npm run typecheck and npm run build passed.
-- npm test passed 5 files and 33 tests: 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
-- Pure pricing assertions confirmed rates of 10 per API call and 100,000/25,000/500,000 micro-cents per million input/cached/output tokens.
-- Reasoning matched the 500,000 output rate.
-- The 1,000/200/500/100 fixture produced category costs 100/5/250/50, AI-token cost 405, API cost 10, and total cost 415.
-- One token in each category produced one micro-cent per category, proving ceiling rounding.
-- Integration assertions confirmed UsageEvent BIGINT costs of 10 and 405 and an exact replayed response total of 415.
-- Existing quota, idempotency, concurrency, seed, and health tests remained green.
-- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+Use MANUAL_TESTING.md and paste redacted outputs here or attach them to the final portfolio submission. Never include secret keys, webhook signing secrets, full signatures, or customer-identifying data.
 
-
-## Phase 6 proof
-
-Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
-
-- npm run typecheck and npm run build passed.
-- npm test passed 6 files and 40 tests: 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
-- Missing and unknown tenant tests returned clean 400 and 404 responses.
-- Seed assertions confirmed Free limits 1,000/100,000, Pro limits 50,000/5,000,000, and near-quota totals 999/50,000.
-- The response exposed exact UTC start/end boundaries and excluded records one millisecond before period start.
-- Grouped aggregation returned exact API/token quantities, per-type costs, remaining quotas, and summed total cost.
-- A priced POST /generate was immediately reflected as 1 API call, 1,800 AI tokens, costs 10/405, and total 415.
-- Existing pricing, quota, idempotency/concurrency, seed, and health suites remained green.
-- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
-
-
-## Phase 7 proof
-
-Verified on 2026-08-12 with mocked Stripe and the Docker Compose PostgreSQL service:
-
-- npm run typecheck and npm run build passed.
-- npm test passed 7 files and 47 tests: 7 Checkout, 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
-- Missing header, unknown tenant, and missing configuration produced sanitized 400/404/503 responses without Stripe calls or secret exposure.
-- Mock assertions confirmed customer creation with tenantId metadata, database persistence, and existing-customer reuse.
-- Session assertions confirmed subscription mode, configured Pro price, customer ID, tenant metadata in two locations, and APP_BASE_URL success/cancel URLs.
-- The response contained checkoutUrl and sessionId.
-- Database assertions confirmed the tenant remained on Free with subscriptionStatus FREE after Checkout creation.
-- No real Stripe network request occurred during tests.
-- Existing usage, pricing, quota, idempotency/concurrency, seed, and health suites remained green.
-- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
-
-
-## Phase 8 proof
-
-Verified on 2026-08-12 with mocked signature verification and the Docker Compose PostgreSQL service:
-
-- npm run typecheck and npm run build passed.
-- npm test passed 8 files and 60 tests: 13 webhook, 7 Checkout, 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
-- The verifier assertion confirmed the route supplied a Buffer containing the raw request bytes.
-- Missing/forged signatures returned 400; database assertions confirmed zero StripeEvent, tenant, and Subscription mutations.
-- Verified checkout completion moved Free to Pro/ACTIVE, saved customer ID, and created one Subscription.
-- Duplicate checkout and deletion event IDs returned 200 duplicate and remained single StripeEvent transitions.
-- Active and past_due updates mapped to Pro/ACTIVE and Pro/PAST_DUE with exact period timestamps.
-- Metadata-free update resolution succeeded through the stored subscription ID.
-- Deletion mapped to Free/CANCELED; unknown verified events returned ignored with processedAt.
-- An unresolvable verified event returned controlled 422 and rolled back its StripeEvent claim.
-- Existing Checkout, usage, pricing, quota, idempotency/concurrency, seed, and health suites remained green.
-- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
 

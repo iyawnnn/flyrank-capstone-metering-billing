@@ -1,27 +1,21 @@
 # Multi-Tenant LLM Usage Metering & Billing Engine
 
-A small, correctness-focused backend for metering API and AI-token usage, enforcing monthly quotas, calculating integer-based costs, and synchronizing Stripe test-mode subscriptions safely.
+A correctness-focused Fastify backend that meters API and AI-token usage, enforces tenant plan quotas, calculates deterministic integer costs, and synchronizes Stripe test-mode subscriptions safely.
 
-> Status: Phase 2.5 foundation. The database schema and seed data are implemented; GET /health is the only HTTP endpoint implemented. Domain behavior described below is the planned contract.
+Status: Phase 9 complete. Core API behavior is implemented and covered by automated tests. Real Stripe CLI evidence remains a manual test-mode step because credentials are never stored in the repository.
 
-## What the system does
+## What the system proves
 
-- Isolates usage and subscription state by tenant.
-- Meters one API call and categorized AI tokens for each successful simulated generation.
-- prevents retry double-counting through tenant-scoped idempotency.
-- Enforces Free and Pro monthly limits at exact boundaries.
-- Calculates deterministic costs without floating-point money.
-- Upgrades tenants through Stripe Checkout in test mode.
-- Verifies webhook signatures and processes each Stripe event once.
-
-## Core features
-
-- `POST /generate` dummy billable operation
-- `GET /usage` monthly usage, limits, cost, and period rollup
-- Free and Pro plans; API-call and AI-token usage types
-- PostgreSQL persistence through Prisma
-- Stripe test-mode Checkout and subscription webhooks
-- Zod input validation and deterministic Vitest coverage
+- Tenant-scoped usage and plan state
+- Retry-safe billable requests with exact response replay
+- Atomic usage, quota, cost, and idempotency writes
+- Exact inclusive quota boundaries
+- Integer micro-cent pricing with category-specific rates
+- Current UTC-month usage and cost rollups
+- Stripe test-mode Checkout customer creation/reuse
+- Raw-body webhook signature verification
+- Duplicate Stripe event protection
+- Transactional plan and subscription projection
 
 ## Tech stack
 
@@ -29,111 +23,98 @@ Node.js 20+, Fastify, TypeScript, PostgreSQL 16, Prisma, Stripe SDK, Zod, Vitest
 
 ## Architecture
 
-```text
-HTTP request
-    |
-Fastify route/controller  -- HTTP parsing and response mapping
-    |
-Domain service            -- idempotency, quota, pricing, billing rules
-    |
-Repository                -- tenant-scoped persistence
-    |
-Prisma -> PostgreSQL
+    HTTP request
+        |
+    Fastify route
+        |
+    Domain service
+        |
+    Repository / Prisma transaction
+        |
+    PostgreSQL
 
-Stripe Checkout <-> Billing service
-Stripe webhook -> raw-body verification -> deduplication -> subscription update
-```
+    Checkout request -> Stripe test-mode gateway
+    Stripe webhook -> raw Buffer -> signature verification
+                   -> unique event claim -> subscription projection
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for planned request flows and boundaries.
+Routes handle HTTP concerns. Services own idempotency, quota, pricing, billing, and webhook rules. Repository helpers own database queries. Configuration pins pricing and validates Stripe inputs. See ARCHITECTURE.md for detailed flows.
 
 ## Setup
 
-1. Install Node.js 20+ and Docker.
-2. Copy `.env.example` to `.env`; keep all values local.
-3. Install packages: `npm install`.
-4. Start PostgreSQL: `docker compose up -d postgres`.
-5. Generate the client: `npm run db:generate`.
-6. After Phase 2 models land, run `npm run db:migrate` and `npm run db:seed`.
+Requirements: Node.js 20+, npm, Docker Desktop, and optionally Stripe CLI.
+
+    npm install
+    Copy-Item .env.example .env
+    docker compose up -d postgres
+    npm run db:generate
+    npm run db:migrate
+    npm run db:seed
+    npm run dev
+
+The seed is idempotent. It creates Free and Pro plans plus:
+
+| Tenant ID | Plan | Seed usage |
+| --- | --- | --- |
+| tenant_demo_free | Free | none |
+| tenant_demo_pro | Pro | none |
+| tenant_near_quota_free | Free | 999 API calls and 50,000 AI tokens in the current UTC month |
+
+Plan limits:
+
+| Plan | API calls/month | AI tokens/month |
+| --- | ---: | ---: |
+| Free | 1,000 | 100,000 |
+| Pro | 50,000 | 5,000,000 |
 
 ## Environment variables
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string |
-| `PORT` | HTTP port (default `3000`) |
-| `STRIPE_SECRET_KEY` | Stripe test secret key (`sk_test_...`) |
-| `STRIPE_WEBHOOK_SECRET` | Local/test webhook signing secret |
-| `STRIPE_PRO_PRICE_ID` | Stripe test-mode recurring Pro price ID |
-| `APP_BASE_URL` | Checkout success/cancel URL base |
+| DATABASE_URL | PostgreSQL connection string |
+| PORT | HTTP port; defaults to 3000 |
+| STRIPE_SECRET_KEY | Stripe test secret key beginning sk_test_ |
+| STRIPE_WEBHOOK_SECRET | Stripe CLI/test signing secret beginning whsec_ |
+| STRIPE_PRO_PRICE_ID | Recurring Pro test price ID |
+| APP_BASE_URL | Checkout success/cancel origin |
 
-Never use live-mode Stripe credentials or commit `.env`.
+Use placeholders from .env.example. Never use live credentials or commit .env.
 
 ## Commands
 
-| Command | Description |
+| Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the TypeScript server with watch mode |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm start` | Run the compiled server |
-| `npm test` | Run the deterministic test suite once |
-| `npm run test:coverage` | Run tests with coverage |
-| `npm run typecheck` | Type-check without emitting files |
-| `npm run db:generate` | Generate Prisma Client |
-| `npm run db:migrate` | Create/apply a local development migration |
-| `npm run db:seed` | Seed plans and demo tenants (Phase 2) |
-| `npm run db:studio` | Open Prisma Studio |
+| npm run dev | Start Fastify in watch mode |
+| npm run build | Compile TypeScript |
+| npm start | Run compiled output |
+| npm run typecheck | Type-check without emitting |
+| npm test | Run all tests |
+| npm run test:coverage | Run tests with V8 coverage |
+| npm run db:generate | Generate Prisma Client |
+| npm run db:migrate | Apply/create local migrations |
+| npm run db:seed | Idempotently seed plans and demo tenants |
+| npm run db:studio | Open Prisma Studio |
 
-## API overview
+## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/health` | Liveness check |
-| POST | `/seed` | Local demo data setup |
-| POST | `/generate` | Simulated billable generation |
-| GET | `/usage` | Current tenant usage rollup |
-| POST | `/billing/checkout` | Create Pro Checkout Session |
-| POST | `/webhooks/stripe` | Receive verified Stripe events |
+| GET | /health | Liveness |
+| POST | /generate | Simulated billable generation |
+| GET | /usage | Current tenant usage/cost summary |
+| POST | /billing/checkout | Create Pro test-mode Checkout |
+| POST | /webhooks/stripe | Verify and process Stripe events |
 
-Only `/health` exists in Phase 1. See [API_SPEC.md](API_SPEC.md) for the planned JSON contracts.
+The seed interface is the CLI command npm run db:seed; there is no HTTP seed endpoint.
 
-## Stripe test-mode setup
+### Health
 
-Create one recurring Pro price in Stripe test mode, place its ID in `STRIPE_PRO_PRICE_ID`, and use only `sk_test_...` credentials. During local development, forward Stripe CLI events to `/webhooks/stripe` and copy the resulting `whsec_...` value to `.env`. Checkout should use Stripe-provided test payment methods; no real payment or live key is required.
+    curl http://localhost:3000/health
 
-## Limitations
+Expected response:
 
-This MVP has no frontend, real AI calls, live payments, invoicing, proration, overage billing, email, admin UI, multi-product catalog, or production deployment configuration.
+    {"status":"ok"}
 
-## Planned demo flow
-
-Seed tenants; submit billable calls through the quota boundary; replay an idempotent request and prove no double count; show quota rejection; create a test Checkout Session; process its verified webhook; reject a forged webhook; replay the real event safely; then show the final `/usage` rollup.
-
-## Project documentation
-
-- [PROJECT_PLAN.md](PROJECT_PLAN.md)
-- [PHASES.md](PHASES.md)
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
-- [TEST_PLAN.md](TEST_PLAN.md)
-- [EVIDENCE.md](EVIDENCE.md)
-- [BUILDLOG.md](BUILDLOG.md)
-
-
-## Phase 2 seed data
-
-After npm run db:migrate, run npm run db:seed. The command is safe to rerun and creates or updates:
-
-| Stable tenant ID | Plan | Seeded usage |
-| --- | --- | --- |
-| tenant_demo_free | Free | None |
-| tenant_demo_pro | Pro | None |
-| tenant_near_quota_free | Free | 999 current-month API calls and 50,000 AI tokens |
-
-Free is limited to 1,000 API calls and 100,000 tokens monthly. Pro is pinned at 50,000 API calls and 5,000,000 tokens monthly. The Pro plan uses STRIPE_PRO_PRICE_ID when supplied, otherwise a safe test placeholder.
-
-
-### POST /generate example
-
-With the PostgreSQL service running and seed data loaded:
+### Generate and idempotent retry
 
     curl -X POST http://localhost:3000/generate \
       -H "content-type: application/json" \
@@ -141,72 +122,100 @@ With the PostgreSQL service running and seed data loaded:
       -H "idempotency-key: demo-key-1" \
       -d "{\"inputTokens\":1000,\"cachedInputTokens\":200,\"outputTokens\":500,\"reasoningTokens\":100}"
 
-The first request records one API call and 1,800 AI tokens. Repeating the same tenant, key, and body returns the stored response without recording usage again. Pricing is intentionally zero until Phase 5, and quotas are intentionally not enforced until Phase 4.
+Run the same command again. The response is replayed exactly and usage remains one API call plus 1,800 tokens.
 
-### Quota rejection example
-
-When a Free tenant is already at 100,000 monthly AI tokens, another token request returns HTTP 429:
-
-    {
-      "error": "quota_exceeded",
-      "message": "AI token quota exceeded for the current month.",
-      "quota": {
-        "usageType": "AI_TOKENS",
-        "used": 100000,
-        "requested": 1,
-        "limit": 100000,
-        "period": "YYYY-MM"
-      }
-    }
-
-Monthly periods use UTC. Reaching a limit exactly is allowed; exceeding it is rejected without usage or idempotency writes.
-
-## Pricing
-
-All internal money uses integer micro-cents.
-
-| Billable category | Pinned rate |
-| --- | ---: |
-| API call | 10 micro-cents per call |
-| Normal input | 100,000 micro-cents per 1,000,000 tokens |
-| Cached input | 25,000 micro-cents per 1,000,000 tokens |
-| Output | 500,000 micro-cents per 1,000,000 tokens |
-| Reasoning | 500,000 micro-cents per 1,000,000 tokens |
-
-Each token category is priced separately. Division rounds upward whenever a nonzero category has a fractional micro-cent cost. The category costs are then summed; token categories are never combined under one rate.
-
-For the documented 1,000 input, 200 cached input, 500 output, and 100 reasoning request:
-
-- Input: 100 micro-cents
-- Cached input: 5 micro-cents
-- Output: 250 micro-cents
-- Reasoning: 50 micro-cents
-- AI-token total: 405 micro-cents
-- API call: 10 micro-cents
-- Total: 415 micro-cents
-
-### GET /usage example
+### Usage summary
 
     curl http://localhost:3000/usage \
       -H "x-tenant-id: tenant_demo_free"
 
-The response includes tenant identity, actual plan limits, subscription status, explicit UTC month boundaries, API/token used and remaining quantities, per-type micro-cent costs, and total cost. Costs are returned as JSON numbers only after safe-integer validation.
+The response includes tenant identity, plan/status, UTC period boundaries, used/limit/remaining quantities, per-type costs, and total micro-cents.
 
-### Stripe test-mode Checkout
+### Quota boundary demo
 
-Set STRIPE_SECRET_KEY to an sk_test_ key, STRIPE_PRO_PRICE_ID to the recurring Pro test price, and APP_BASE_URL to the local application origin. Never use a live key.
+The near-quota tenant starts at 999 API calls. Use a unique first key to reach exactly 1,000, then a second key to receive 429:
+
+    curl -X POST http://localhost:3000/generate \
+      -H "content-type: application/json" \
+      -H "x-tenant-id: tenant_near_quota_free" \
+      -H "idempotency-key: quota-final-slot" \
+      -d "{\"inputTokens\":1,\"cachedInputTokens\":0,\"outputTokens\":0,\"reasoningTokens\":0}"
+
+    curl -X POST http://localhost:3000/generate \
+      -H "content-type: application/json" \
+      -H "x-tenant-id: tenant_near_quota_free" \
+      -H "idempotency-key: quota-over-limit" \
+      -d "{\"inputTokens\":1,\"cachedInputTokens\":0,\"outputTokens\":0,\"reasoningTokens\":0}"
+
+Exactly reaching a limit succeeds; projected usage above a limit fails without usage or idempotency writes.
+
+## Pricing
+
+All internal money is integer micro-cents.
+
+| Category | Rate |
+| --- | ---: |
+| API call | 10 micro-cents/call |
+| Input tokens | 100,000 micro-cents/million |
+| Cached input tokens | 25,000 micro-cents/million |
+| Output tokens | 500,000 micro-cents/million |
+| Reasoning tokens | output rate |
+
+Each token category is priced separately with integer ceiling division, so nonzero fractional category cost never rounds to zero. The 1,000/200/500/100 example costs 405 token micro-cents plus 10 for the call: 415 total.
+
+## Stripe test mode
+
+Create one recurring Pro price in Stripe test mode. Configure its price ID and a test secret key, then call:
 
     curl -X POST http://localhost:3000/billing/checkout \
       -H "x-tenant-id: tenant_demo_free"
 
-The response contains checkoutUrl and sessionId. Open the hosted URL and use Stripe test-mode payment methods. Checkout creation may save a Stripe customer ID, but the tenant remains on its current plan/status until a verified webhook is implemented in Phase 8.
+Checkout may persist a Stripe customer ID, but never grants Pro access. Only a verified webhook changes plan/status.
 
-### Stripe webhook local testing
-
-Use Stripe CLI in test mode and forward events to the local Fastify endpoint:
+For local webhook forwarding:
 
     stripe listen --forward-to localhost:3000/webhooks/stripe
 
-Copy the displayed whsec_ signing secret to STRIPE_WEBHOOK_SECRET in the local .env file. Do not commit it. The endpoint verifies the exact raw request bytes and stripe-signature header before trusting metadata.
+Copy the displayed signing secret into local STRIPE_WEBHOOK_SECRET. Supported events are checkout.session.completed, customer.subscription.updated, and customer.subscription.deleted. See MANUAL_TESTING.md for the complete demo and replay/forgery checks.
 
-Useful test-mode lifecycle events are checkout.session.completed, customer.subscription.updated, and customer.subscription.deleted. Replaying the same Stripe event ID returns a duplicate acknowledgement without applying state twice.
+## Security notes
+
+- Only Stripe test secret keys are accepted.
+- Webhook verification uses the exact raw request bytes.
+- Invalid signatures produce no StripeEvent or tenant mutation.
+- Stripe event IDs and tenant/idempotency-key pairs are unique.
+- Stripe failures are returned as sanitized errors.
+- Tenant-owned reads and writes include tenant identity.
+- .env, node_modules, dist, coverage, logs, and local databases are ignored.
+- No credential-shaped Stripe key is committed.
+
+The x-tenant-id header models tenant context for this capstone; it is not production authentication. A production service must derive tenant identity from authenticated authorization claims.
+
+## Demo flow
+
+1. Seed plans and demo tenants.
+2. Verify /health.
+3. Generate usage and replay the same idempotency key.
+4. Show /usage did not double-count.
+5. Reach the near-quota tenant limit and show 429.
+6. Create a Stripe test Checkout Session.
+7. Complete Checkout and observe the verified webhook upgrade.
+8. Send an invalid signature and show 400 with no state change.
+9. Replay a verified event and show duplicate acknowledgement.
+10. Finish with /usage showing the active plan, limits, usage, and cost.
+
+## Limitations
+
+No frontend, real AI calls, live payments, invoices, proration, overages, email, billing portal, background reconciliation, admin UI, multi-product catalog, or production deployment configuration.
+
+## Documentation
+
+- API_SPEC.md
+- ARCHITECTURE.md
+- DATABASE_SCHEMA.md
+- PROJECT_PLAN.md
+- PHASES.md
+- TEST_PLAN.md
+- EVIDENCE.md
+- BUILDLOG.md
+- MANUAL_TESTING.md
