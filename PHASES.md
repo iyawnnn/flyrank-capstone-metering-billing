@@ -33,7 +33,7 @@
 
 ## Phase 8: Stripe webhooks
 
-**Goal:** Synchronize only verified events and tolerate duplicate delivery. **Tasks:** raw-body route ordering, signature verification, unique event claim, three required event handlers, transactional subscription/plan update. **Gate:** forged event has zero mutations; valid duplicate applies once; deletion/update behavior is correct. **Evidence:** Stripe CLI delivery, forged rejection, replay response, database state.
+**Status:** Complete. **Goal:** Synchronize only verified events and tolerate duplicate delivery. **Delivered:** route-specific raw Buffer handling, Stripe constructEvent verification, sanitized signature/config errors, transactional unique event claiming, three lifecycle handlers, metadata/subscription/customer tenant resolution, documented status mapping, subscription periods, and duplicate-safe deletion. **Gate:** forged events have zero mutations, valid duplicates apply once, unknown verified events are ignored, and projection failures roll back. **Evidence:** Phase 8 webhook and full regression suites.
 
 ## Phase 9: Tests and evidence
 

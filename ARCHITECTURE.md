@@ -35,7 +35,7 @@ Resolve the tenant; reuse its Stripe customer or create one in test mode; persis
 
 ## Stripe webhook flow
 
-The future Fastify webhook route will use a route-scoped raw-body mechanism so the original bytes are available before JSON parsing. Stripe verifies the payload/signature with `STRIPE_WEBHOOK_SECRET`. Invalid signatures return `400` without writes. A verified event is processed transactionally: claim its unique event ID, map the supported event to a tenant, upsert subscription state, update the tenant plan/status, and mark processing complete. A duplicate ID returns success without applying state twice.
+The Fastify JSON parser preserves a raw Buffer specifically for /webhooks/stripe while parsing other JSON routes normally. Stripe verifies the payload/signature with `STRIPE_WEBHOOK_SECRET`. Invalid signatures return `400` without writes. A verified event is processed transactionally: claim its unique event ID, map the supported event to a tenant, upsert subscription state, update the tenant plan/status, and mark processing complete. A duplicate ID returns success without applying state twice.
 
 ## Idempotency flow
 
@@ -48,6 +48,7 @@ Identity is `(tenantId, key)`, not the key globally. The request hash binds the 
 ## Error strategy
 
 Expected domain errors map to JSON with a stable code and message. Validation uses `400`, missing tenants use `404`, idempotency conflicts use `409`, exceeded quotas use `429`, and payment/upgrade-required outcomes may use `402`. Unexpected errors become a generic `500` and do not expose secrets or stack traces. Quota errors include quota type, current usage, limit, requested quantity, and suggested action.
+
 
 
 

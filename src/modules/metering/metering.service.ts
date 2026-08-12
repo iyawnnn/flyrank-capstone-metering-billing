@@ -42,7 +42,7 @@ interface MeterUsageResult {
   replayed: boolean;
 }
 
-const TRANSACTION_RETRIES = 3;
+const TRANSACTION_RETRIES = 8;
 
 const isRetryableTransactionError = (error: unknown): boolean =>
   error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -179,6 +179,7 @@ export const meterGeneration = async (
 
   throw new Error("Transaction retry limit reached.");
 };
+
 
 
 

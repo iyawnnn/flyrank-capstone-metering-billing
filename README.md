@@ -200,3 +200,13 @@ Set STRIPE_SECRET_KEY to an sk_test_ key, STRIPE_PRO_PRICE_ID to the recurring P
       -H "x-tenant-id: tenant_demo_free"
 
 The response contains checkoutUrl and sessionId. Open the hosted URL and use Stripe test-mode payment methods. Checkout creation may save a Stripe customer ID, but the tenant remains on its current plan/status until a verified webhook is implemented in Phase 8.
+
+### Stripe webhook local testing
+
+Use Stripe CLI in test mode and forward events to the local Fastify endpoint:
+
+    stripe listen --forward-to localhost:3000/webhooks/stripe
+
+Copy the displayed whsec_ signing secret to STRIPE_WEBHOOK_SECRET in the local .env file. Do not commit it. The endpoint verifies the exact raw request bytes and stripe-signature header before trusting metadata.
+
+Useful test-mode lifecycle events are checkout.session.completed, customer.subscription.updated, and customer.subscription.deleted. Replaying the same Stripe event ID returns a duplicate acknowledgement without applying state twice.

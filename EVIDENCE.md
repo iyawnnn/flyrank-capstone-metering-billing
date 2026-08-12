@@ -129,3 +129,21 @@ Verified on 2026-08-12 with mocked Stripe and the Docker Compose PostgreSQL serv
 - Existing usage, pricing, quota, idempotency/concurrency, seed, and health suites remained green.
 - npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
 
+
+## Phase 8 proof
+
+Verified on 2026-08-12 with mocked signature verification and the Docker Compose PostgreSQL service:
+
+- npm run typecheck and npm run build passed.
+- npm test passed 8 files and 60 tests: 13 webhook, 7 Checkout, 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
+- The verifier assertion confirmed the route supplied a Buffer containing the raw request bytes.
+- Missing/forged signatures returned 400; database assertions confirmed zero StripeEvent, tenant, and Subscription mutations.
+- Verified checkout completion moved Free to Pro/ACTIVE, saved customer ID, and created one Subscription.
+- Duplicate checkout and deletion event IDs returned 200 duplicate and remained single StripeEvent transitions.
+- Active and past_due updates mapped to Pro/ACTIVE and Pro/PAST_DUE with exact period timestamps.
+- Metadata-free update resolution succeeded through the stored subscription ID.
+- Deletion mapped to Free/CANCELED; unknown verified events returned ignored with processedAt.
+- An unresolvable verified event returned controlled 422 and rolled back its StripeEvent claim.
+- Existing Checkout, usage, pricing, quota, idempotency/concurrency, seed, and health suites remained green.
+- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+

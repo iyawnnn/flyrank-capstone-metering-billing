@@ -87,3 +87,37 @@ export const createStripeGateway = (
     },
   };
 };
+
+export class StripeWebhookConfigurationError extends Error {
+  constructor() {
+    super("Stripe webhook verification is not configured.");
+    this.name = "StripeWebhookConfigurationError";
+  }
+}
+
+export const loadStripeWebhookSecret = (
+  environment: NodeJS.ProcessEnv = process.env,
+): string => {
+  const secret = environment.STRIPE_WEBHOOK_SECRET;
+  if (
+    typeof secret !== "string" ||
+    !/^whsec_[A-Za-z0-9_]+$/.test(secret)
+  ) {
+    throw new StripeWebhookConfigurationError();
+  }
+  return secret;
+};
+
+export const createStripeWebhookVerifier = (): import("../modules/webhooks/stripe-webhook.types.js").StripeWebhookVerifier => {
+  const stripe = new Stripe("sk_test_webhook_verification_only");
+
+  return {
+    constructEvent(payload, signature, webhookSecret) {
+      return stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        webhookSecret,
+      ) as unknown as import("../modules/webhooks/stripe-webhook.types.js").VerifiedStripeEvent;
+    },
+  };
+};

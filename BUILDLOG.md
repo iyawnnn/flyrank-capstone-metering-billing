@@ -302,3 +302,40 @@ YYYY-MM-DD
 ### Tests/evidence added
 
 - Added seven mocked integration scenarios covering errors, customer lifecycle, Session construction, response fields, and no premature upgrade.
+
+---
+
+## 2026-08-12 — Phase 8 verified and deduplicated Stripe webhooks
+
+### What was built
+
+- Added POST /webhooks/stripe with route-specific raw-body preservation and Stripe SDK signature verification.
+- Added transactional StripeEvent claiming, duplicate responses, and processed timestamps.
+- Added checkout completion, subscription update, and subscription deletion projections.
+- Added tenant fallback resolution and deterministic subscription status mapping.
+
+### AI assistance used
+
+- Used AI to design raw-body routing, injectable verification, transaction/duplicate handling, status mapping, fallback resolution, and integration fixtures.
+
+### What AI got wrong
+
+- The first targeted app edit did not match existing whitespace, so the app factory was rewritten cleanly with equivalent prior route registrations.
+- The first full parallel regression run exposed the earlier three-attempt metering transaction retry bound under added database contention; it was increased to eight and the full suite passed.
+
+### What was changed manually
+
+- Preserved all existing app dependencies/routes while adding the custom parser and webhook registration.
+
+### Decisions made
+
+- Only /webhooks/stripe receives raw bytes; other application/json routes retain normal parsing.
+- Event claim and all projections share one serializable transaction.
+- Duplicate IDs return 200 without another update.
+- active/trialing and past_due remain Pro; canceled/unpaid/incomplete states downgrade to Free.
+- Permanent verified payload resolution failures return controlled 422 and roll back the claim.
+
+### Tests/evidence added
+
+- Added thirteen route/database scenarios for signatures, raw bytes, projections, fallbacks, duplicates, ignored events, and rollback.
+
