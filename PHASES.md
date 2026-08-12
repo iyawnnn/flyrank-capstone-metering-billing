@@ -25,7 +25,7 @@
 
 ## Phase 6: Usage summary endpoint
 
-**Goal:** Answer monthly used/limit/cost questions per tenant. **Tasks:** tenant-scoped aggregates, plan/subscription projection, UTC period, response/controller tests. **Gate:** fixture rollups match and exclude other periods/tenants. **Evidence:** `/usage` response and integration tests.
+**Status:** Complete. **Goal:** Answer monthly used/limit/cost questions per tenant. **Delivered:** tenant-scoped GET /usage, UTC inclusive/exclusive period boundaries, usage-type quantity and BigInt cost aggregation, actual plan/subscription projection, remaining quota, safe JSON money conversion, and historical-period exclusion. **Gate:** seeded Free/Pro/near-quota fixtures, custom aggregates, prior-month exclusion, and post-generate visibility tests pass. **Evidence:** Phase 6 integration and full regression suite output.
 
 ## Phase 7: Stripe Checkout
 

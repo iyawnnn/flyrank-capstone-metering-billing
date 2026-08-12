@@ -98,3 +98,18 @@ Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
 - Existing quota, idempotency, concurrency, seed, and health tests remained green.
 - npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
 
+
+## Phase 6 proof
+
+Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
+
+- npm run typecheck and npm run build passed.
+- npm test passed 6 files and 40 tests: 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
+- Missing and unknown tenant tests returned clean 400 and 404 responses.
+- Seed assertions confirmed Free limits 1,000/100,000, Pro limits 50,000/5,000,000, and near-quota totals 999/50,000.
+- The response exposed exact UTC start/end boundaries and excluded records one millisecond before period start.
+- Grouped aggregation returned exact API/token quantities, per-type costs, remaining quotas, and summed total cost.
+- A priced POST /generate was immediately reflected as 1 API call, 1,800 AI tokens, costs 10/405, and total 415.
+- Existing pricing, quota, idempotency/concurrency, seed, and health suites remained green.
+- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+

@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { Prisma, PrismaClient } from "@prisma/client";
 
 export const findTenantById = (
   transaction: Prisma.TransactionClient,
@@ -10,6 +10,26 @@ export const findTenantById = (
       id: true,
       plan: {
         select: {
+          monthlyApiCallLimit: true,
+          monthlyTokenLimit: true,
+        },
+      },
+    },
+  });
+
+export const findTenantUsageProfile = (
+  prisma: PrismaClient,
+  tenantId: string,
+) =>
+  prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      name: true,
+      subscriptionStatus: true,
+      plan: {
+        select: {
+          name: true,
           monthlyApiCallLimit: true,
           monthlyTokenLimit: true,
         },

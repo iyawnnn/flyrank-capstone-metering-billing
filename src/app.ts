@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type { PrismaClient } from "@prisma/client";
 import { prisma as defaultPrisma } from "./lib/prisma.js";
 import { registerGenerateRoutes } from "./modules/generate/generate.routes.js";
+import { registerUsageRoutes } from "./modules/usage/usage.routes.js";
 
 interface CreateAppOptions {
   prisma?: PrismaClient;
@@ -18,6 +19,8 @@ export const createApp = (
   });
 
   registerGenerateRoutes(app, prisma);
+  registerUsageRoutes(app, prisma);
 
   return app;
 };
+
