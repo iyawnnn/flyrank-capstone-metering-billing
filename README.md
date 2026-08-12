@@ -184,3 +184,10 @@ For the documented 1,000 input, 200 cached input, 500 output, and 100 reasoning 
 - AI-token total: 405 micro-cents
 - API call: 10 micro-cents
 - Total: 415 micro-cents
+
+### GET /usage example
+
+    curl http://localhost:3000/usage \
+      -H "x-tenant-id: tenant_demo_free"
+
+The response includes tenant identity, actual plan limits, subscription status, explicit UTC month boundaries, API/token used and remaining quantities, per-type micro-cent costs, and total cost. Costs are returned as JSON numbers only after safe-integer validation.

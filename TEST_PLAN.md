@@ -98,3 +98,18 @@ Implemented deterministic tests verify:
 - POST /generate stores 10 and the exact token cost on its two events.
 - The response and exact idempotent replay contain the same cost summary.
 - Existing quota, idempotency, seed, and health behavior remains covered.
+
+## Phase 6 usage rollup coverage
+
+Implemented integration coverage verifies:
+
+- Missing tenant header returns 400 and unknown tenant returns 404.
+- Demo Free and Pro tenants return their actual plan limits and statuses.
+- The near-quota seed returns 999 API calls and 50,000 AI tokens.
+- Period start is UTC-month inclusive and period end is next-month exclusive.
+- API_CALL and AI_TOKENS quantities and costs aggregate independently.
+- Total cost equals the two usage-type cost totals.
+- Remaining quota is calculated per usage type and clamped at zero.
+- Usage immediately before the current period is excluded.
+- A successful priced POST /generate is visible in the next GET /usage.
+- Existing pricing, quota, idempotency, seed, and health suites remain covered.

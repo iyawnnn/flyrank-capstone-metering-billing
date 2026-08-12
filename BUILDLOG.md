@@ -234,3 +234,36 @@ YYYY-MM-DD
 ### Tests/evidence added
 
 - Added eight pure pricing tests and updated generate integration assertions for stored and returned costs.
+
+---
+
+## 2026-08-12 — Phase 6 tenant usage rollup
+
+### What was built
+
+- Added tenant-scoped GET /usage with a thin Fastify route and usage aggregation service.
+- Added tenant/plan/subscription projection, UTC period boundaries, per-type quantities and costs, remaining quota, and total cost.
+- Added current-period filtering and historical usage exclusion.
+
+### AI assistance used
+
+- Used AI to design the response type, grouped Prisma query, safe BigInt conversion boundary, and isolated integration fixtures.
+
+### What AI got wrong
+
+- Nothing recorded after focused verification.
+
+### What was changed manually
+
+- Pending maintainer review.
+
+### Decisions made
+
+- Reused the quota service UTC calendar-month helper to keep write and read periods identical.
+- Kept database costs as bigint and returned JSON numbers only through the existing safe-integer guard.
+- Clamped remaining quota at zero for defensive reporting if imported or historical data exceeds a limit.
+- Used one grouped query for quantity and cost totals by usage type.
+
+### Tests/evidence added
+
+- Added seven integration scenarios covering errors, seeded plans/totals, periods, aggregation, old-event exclusion, and post-generate visibility.

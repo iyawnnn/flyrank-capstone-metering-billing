@@ -69,30 +69,55 @@ A new request writes exactly one API_CALL event with quantity 1, one AI_TOKENS e
 
 A quota rejection creates neither usage events nor an idempotency response. A previously successful matching retry is replayed before quota evaluation, so it remains available after the original request reaches the limit.
 The same tenant/key/hash replays the originally stored status and stable response without additional events. The same key is independent across tenants. Writes run in a serializable transaction with bounded retry handling for serialization and uniqueness races.
-## `GET /usage`
+## GET /usage
 
-**Purpose:** Return the current UTC calendar-month rollup.
+**Status:** Implemented in Phase 6.
 
-**Headers:** Required `x-tenant-id`. **Body:** None.
+**Purpose:** Return the tenant-scoped current UTC calendar-month usage, plan limits, remaining quota, and integer micro-cent costs.
 
-**Success `200`:**
+**Headers:** Required x-tenant-id. **Body:** None.
 
-```json
-{
-  "tenantId": "tenant-id",
-  "plan": "FREE",
-  "subscriptionStatus": "inactive",
-  "usage": {
-    "apiCalls": { "used": 12, "limit": 1000 },
-    "aiTokens": { "used": 3400, "limit": 100000 },
-    "totalCostMicroCents": 1234
-  },
-  "period": { "start": "2026-08-01T00:00:00.000Z", "end": "2026-09-01T00:00:00.000Z" }
-}
-```
+**Success 200:**
 
-**Errors:** `400` missing tenant header; `404` tenant; `500` unexpected. **Notes:** Period end is exclusive; only tenant-scoped events in `[start, end)` are included.
+    {
+      "tenant": {
+        "id": "tenant_demo_free",
+        "name": "Demo Free Tenant"
+      },
+      "plan": {
+        "name": "FREE",
+        "monthlyApiCallLimit": 1000,
+        "monthlyTokenLimit": 100000
+      },
+      "subscriptionStatus": "FREE",
+      "period": {
+        "start": "2026-08-01T00:00:00.000Z",
+        "end": "2026-09-01T00:00:00.000Z"
+      },
+      "usage": {
+        "apiCalls": {
+          "used": 10,
+          "limit": 1000,
+          "remaining": 990,
+          "costMicroCents": 100
+        },
+        "aiTokens": {
+          "used": 18000,
+          "limit": 100000,
+          "remaining": 82000,
+          "costMicroCents": 4050
+        }
+      },
+      "cost": {
+        "apiCallMicroCents": 100,
+        "aiTokensMicroCents": 4050,
+        "totalMicroCents": 4150
+      }
+    }
 
+**Errors:** 400 for a missing/blank tenant header; 404 for an unknown tenant; 500 for unexpected failures or a cost total outside the JSON safe-integer range.
+
+**Notes:** UsageEvent quantities and costs are grouped by usage type in the UTC window [period.start, period.end). Start is inclusive and end is exclusive. Remaining quota is clamped at zero if historical/imported data is already over a plan limit. Database costs remain BIGINT; response costs are JSON numbers only after safe-integer validation.
 ## `POST /billing/checkout`
 
 **Purpose:** Create a Stripe test-mode Pro subscription Checkout Session.
@@ -112,6 +137,7 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Success `200`:** `{ "received": true, "duplicate": false }`; duplicate delivery returns the same with `duplicate: true` and performs no second state transition.
 
 **Errors:** `400` missing/invalid signature or malformed payload; `500` transient processing failure so Stripe may retry. **Notes:** Raw-body middleware must precede normal JSON parsing. Supported types are `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Only verified events may update subscription/plan status; unhandled verified types are acknowledged without a domain update.
+
 
 
 
