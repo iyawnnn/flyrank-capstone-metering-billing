@@ -113,3 +113,19 @@ Verified on 2026-08-12 against the Docker Compose PostgreSQL service:
 - Existing pricing, quota, idempotency/concurrency, seed, and health suites remained green.
 - npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
 
+
+## Phase 7 proof
+
+Verified on 2026-08-12 with mocked Stripe and the Docker Compose PostgreSQL service:
+
+- npm run typecheck and npm run build passed.
+- npm test passed 7 files and 47 tests: 7 Checkout, 7 usage, 8 pricing, 12 generate/idempotency, 8 quota, 4 seed, and 1 health test.
+- Missing header, unknown tenant, and missing configuration produced sanitized 400/404/503 responses without Stripe calls or secret exposure.
+- Mock assertions confirmed customer creation with tenantId metadata, database persistence, and existing-customer reuse.
+- Session assertions confirmed subscription mode, configured Pro price, customer ID, tenant metadata in two locations, and APP_BASE_URL success/cancel URLs.
+- The response contained checkoutUrl and sessionId.
+- Database assertions confirmed the tenant remained on Free with subscriptionStatus FREE after Checkout creation.
+- No real Stripe network request occurred during tests.
+- Existing usage, pricing, quota, idempotency/concurrency, seed, and health suites remained green.
+- npm run db:generate, npx prisma validate, and npx prisma migrate status passed; the database is up to date.
+

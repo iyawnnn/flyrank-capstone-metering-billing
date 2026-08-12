@@ -118,16 +118,26 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Errors:** 400 for a missing/blank tenant header; 404 for an unknown tenant; 500 for unexpected failures or a cost total outside the JSON safe-integer range.
 
 **Notes:** UsageEvent quantities and costs are grouped by usage type in the UTC window [period.start, period.end). Start is inclusive and end is exclusive. Remaining quota is clamped at zero if historical/imported data is already over a plan limit. Database costs remain BIGINT; response costs are JSON numbers only after safe-integer validation.
-## `POST /billing/checkout`
+## POST /billing/checkout
 
-**Purpose:** Create a Stripe test-mode Pro subscription Checkout Session.
+**Status:** Implemented in Phase 7.
 
-**Headers:** Required `x-tenant-id`. **Body:** None.
+**Purpose:** Create a Stripe test-mode subscription Checkout Session for the configured Pro price.
 
-**Success `200`:** `{ "checkoutUrl": "https://checkout.stripe.com/..." }`.
+**Headers:** Required x-tenant-id. **Body:** None.
 
-**Errors:** `400` missing header/configuration; `404` tenant; `409` tenant already has an active Pro subscription; `502` Stripe failure; `500` unexpected. **Notes:** Reuses or creates the tenant’s Stripe customer, uses `STRIPE_PRO_PRICE_ID`, includes `tenantId` metadata, and does not update plan state before a verified webhook.
+**Success 200:**
 
+    {
+      "checkoutUrl": "https://checkout.stripe.com/...",
+      "sessionId": "cs_test_..."
+    }
+
+**Errors:** 400 for a missing/blank tenant header; 404 for an unknown tenant; 503 when test-mode Stripe configuration is absent or invalid; 502 when Stripe customer/Session creation fails; 500 for unexpected persistence failures.
+
+**Behavior:** The service reuses Tenant.stripeCustomerId when present. Otherwise it creates a Stripe customer with tenantId metadata and persists the returned customer ID. It then creates a Session with mode subscription, one configured STRIPE_PRO_PRICE_ID line item, tenantId in both Session and subscription metadata, and APP_BASE_URL-derived success/cancel URLs.
+
+Only sk_test_ secret keys are accepted by environment validation. Errors never return keys or Stripe exception details. Checkout creation does not change planId or subscriptionStatus and does not grant Pro access; only a future verified Phase 8 webhook may do that.
 ## `POST /webhooks/stripe`
 
 **Purpose:** Verify and consume supported Stripe subscription events.
@@ -137,6 +147,7 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Success `200`:** `{ "received": true, "duplicate": false }`; duplicate delivery returns the same with `duplicate: true` and performs no second state transition.
 
 **Errors:** `400` missing/invalid signature or malformed payload; `500` transient processing failure so Stripe may retry. **Notes:** Raw-body middleware must precede normal JSON parsing. Supported types are `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Only verified events may update subscription/plan status; unhandled verified types are acknowledged without a domain update.
+
 
 
 

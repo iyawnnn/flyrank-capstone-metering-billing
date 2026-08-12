@@ -113,3 +113,18 @@ Implemented integration coverage verifies:
 - Usage immediately before the current period is excluded.
 - A successful priced POST /generate is visible in the next GET /usage.
 - Existing pricing, quota, idempotency, seed, and health suites remain covered.
+
+## Phase 7 Stripe Checkout coverage
+
+Mocked integration coverage verifies:
+
+- Missing tenant header returns 400 and unknown tenant returns 404 without Stripe calls.
+- Missing or invalid Checkout configuration returns a sanitized 503.
+- A tenant without stripeCustomerId gets a customer with tenantId metadata and persists its ID.
+- A tenant with stripeCustomerId reuses it without another customer call.
+- Checkout uses subscription mode and one STRIPE_PRO_PRICE_ID line item.
+- Session and subscription metadata both contain tenantId.
+- Success and cancel URLs derive from APP_BASE_URL.
+- The response contains checkoutUrl and sessionId.
+- Checkout creation leaves planId, Free plan, and subscriptionStatus unchanged.
+- No real Stripe network call occurs during npm test.

@@ -29,7 +29,7 @@
 
 ## Phase 7: Stripe Checkout
 
-**Goal:** Start a Pro upgrade through Stripe test mode. **Tasks:** validated test-key config, customer reuse/creation, subscription Checkout, configured price, tenant metadata, safe URLs/errors. **Gate:** test-mode Session URL returned and no pre-webhook plan upgrade. **Evidence:** redacted Checkout/Stripe test object and test output.
+**Status:** Complete. **Goal:** Start a Pro upgrade through Stripe test mode. **Delivered:** lazy validated test-key configuration, injectable Stripe gateway, customer creation/persistence/reuse, subscription-mode Checkout with configured price and tenant metadata, safe success/cancel URLs, sanitized errors, and URL/session response. **Gate:** mocked Session creation passes and database assertions prove plan/status remain unchanged. **Evidence:** Phase 7 Checkout suite and full regression output.
 
 ## Phase 8: Stripe webhooks
 

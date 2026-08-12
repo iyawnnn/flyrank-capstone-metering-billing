@@ -36,3 +36,29 @@ export const findTenantUsageProfile = (
       },
     },
   });
+
+export const findTenantForCheckout = (
+  prisma: PrismaClient,
+  tenantId: string,
+) =>
+  prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      name: true,
+      stripeCustomerId: true,
+      planId: true,
+      subscriptionStatus: true,
+    },
+  });
+
+export const updateTenantStripeCustomerId = (
+  prisma: PrismaClient,
+  tenantId: string,
+  stripeCustomerId: string,
+) =>
+  prisma.tenant.update({
+    where: { id: tenantId },
+    data: { stripeCustomerId },
+    select: { id: true, stripeCustomerId: true },
+  });
