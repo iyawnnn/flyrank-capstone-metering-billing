@@ -166,3 +166,37 @@ YYYY-MM-DD
 ### Tests/evidence added
 
 - Added validation, metering quantity, exact replay, conflict, tenant scoping, and concurrent retry integration tests.
+
+---
+
+## 2026-08-12 — Phase 4 monthly quota enforcement
+
+### What was built
+
+- Added UTC calendar-month usage aggregation and plan-limit enforcement for API_CALL and AI_TOKENS.
+- Integrated quota evaluation before writes inside the existing serializable Prisma transaction.
+- Added structured 429 responses and comprehensive boundary/concurrency integration tests.
+
+### AI assistance used
+
+- Used AI to design the UTC window helper, deterministic error precedence, transaction placement, and isolated database fixtures.
+
+### What AI got wrong
+
+- Nothing recorded after focused verification.
+
+### What was changed manually
+
+- Pending maintainer review.
+
+### Decisions made
+
+- Exactly reaching a limit succeeds; only projected usage greater than the limit fails.
+- API_CALL is checked before AI_TOKENS when both would exceed.
+- Existing successful idempotency records are replayed before a new quota check.
+- Quota rejection is not persisted as a successful idempotency response.
+- No 402 behavior was introduced because payment-required policy is outside Phase 4.
+
+### Tests/evidence added
+
+- Added eight integration scenarios covering API/token boundaries, rejection atomicity, error details, Pro limits, replay behavior, and concurrent last-slot safety.
