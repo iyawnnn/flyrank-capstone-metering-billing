@@ -191,3 +191,12 @@ For the documented 1,000 input, 200 cached input, 500 output, and 100 reasoning 
       -H "x-tenant-id: tenant_demo_free"
 
 The response includes tenant identity, actual plan limits, subscription status, explicit UTC month boundaries, API/token used and remaining quantities, per-type micro-cent costs, and total cost. Costs are returned as JSON numbers only after safe-integer validation.
+
+### Stripe test-mode Checkout
+
+Set STRIPE_SECRET_KEY to an sk_test_ key, STRIPE_PRO_PRICE_ID to the recurring Pro test price, and APP_BASE_URL to the local application origin. Never use a live key.
+
+    curl -X POST http://localhost:3000/billing/checkout \
+      -H "x-tenant-id: tenant_demo_free"
+
+The response contains checkoutUrl and sessionId. Open the hosted URL and use Stripe test-mode payment methods. Checkout creation may save a Stripe customer ID, but the tenant remains on its current plan/status until a verified webhook is implemented in Phase 8.

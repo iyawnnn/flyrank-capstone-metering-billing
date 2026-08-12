@@ -267,3 +267,38 @@ YYYY-MM-DD
 ### Tests/evidence added
 
 - Added seven integration scenarios covering errors, seeded plans/totals, periods, aggregation, old-event exclusion, and post-generate visibility.
+
+---
+
+## 2026-08-12 — Phase 7 Stripe test-mode Checkout
+
+### What was built
+
+- Added POST /billing/checkout with a thin Fastify route and Checkout service.
+- Added lazy Stripe test-mode configuration validation and an injectable SDK adapter.
+- Added Stripe customer creation/persistence/reuse and subscription Session creation.
+- Added sanitized configuration and upstream error responses.
+
+### AI assistance used
+
+- Used AI to design the injectable Stripe boundary, environment validation, customer lifecycle, Session arguments, and mocked integration suite.
+
+### What AI got wrong
+
+- Nothing recorded after focused verification.
+
+### What was changed manually
+
+- Pending maintainer review.
+
+### Decisions made
+
+- Stripe is initialized lazily so non-billing routes work without Stripe configuration.
+- Only sk_test_ secrets are accepted.
+- Missing configuration returns 503 and sanitized Stripe failures return 502.
+- Checkout stores only stripeCustomerId; it never updates planId or subscriptionStatus.
+- Both Session metadata and subscription_data.metadata carry tenantId for Phase 8 correlation.
+
+### Tests/evidence added
+
+- Added seven mocked integration scenarios covering errors, customer lifecycle, Session construction, response fields, and no premature upgrade.
