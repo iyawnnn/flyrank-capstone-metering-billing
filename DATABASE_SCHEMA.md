@@ -27,7 +27,7 @@ Fields: id, name, planId, nullable unique stripeCustomerId, subscriptionStatus, 
 
 ### Subscription
 
-Fields: id, tenantId, nullable unique stripeSubscriptionId, stripeCustomerId, status, nullable currentPeriodStart, nullable currentPeriodEnd, createdAt, and updatedAt. It belongs to a Tenant. Multiple historical/current records are permitted; Stripe event handling will define current-record behavior in Phase 8.
+Fields: id, tenantId, nullable unique stripeSubscriptionId, stripeCustomerId, status, nullable currentPeriodStart, nullable currentPeriodEnd, createdAt, and updatedAt. It belongs to a Tenant. Multiple historical/current records are permitted. Verified Stripe events upsert the record identified by stripeSubscriptionId and synchronize tenant plan/status.
 
 ### UsageEvent
 
@@ -67,3 +67,4 @@ Timestamps are stored in PostgreSQL and interpreted as UTC. Usage periods use UT
 - tenant_near_quota_free: Free, with current-month quantities of 999 API calls and 50,000 AI tokens
 
 The script uses upserts with stable IDs, so rerunning it updates these fixtures rather than duplicating them.
+

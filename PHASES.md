@@ -37,7 +37,7 @@
 
 ## Phase 9: Tests and evidence
 
-**Goal:** Turn correctness claims into reproducible proof. **Tasks:** complete [TEST_PLAN.md](TEST_PLAN.md), coverage, clean-install run, fill evidence, review errors/secrets/tenant isolation. **Gate:** deterministic full suite passes from documented setup and every required evidence section is populated. **Evidence:** full logs and linked artifacts.
+**Status:** Complete with manual Stripe artifacts outstanding. **Goal:** Turn correctness claims into reproducible proof. **Delivered:** full regression and coverage runs, consolidated evidence, secret/ignore/dependency audits, corrected submission files, and MANUAL_TESTING.md for local and Stripe CLI demos. **Gate:** 60 tests, typecheck, build, Prisma generation/validation/status, coverage, seed rerun, and npm audit pass. **Manual evidence:** real test-mode Checkout/CLI delivery, event resend, and terminal health screenshot require evaluator-owned credentials/runtime. **Evidence:** EVIDENCE.md.
 
 ## Phase 10: Demo polish
 

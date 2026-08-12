@@ -1,14 +1,12 @@
 # API Specification
 
-Fastify serves the HTTP API. All responses are JSON except that Stripe sends the future webhook request as raw bytes. Tenant endpoints use `x-tenant-id`. Planned error bodies use `{ "error": { "code": "...", "message": "...", "details": {} } }`.
+Fastify serves the HTTP API. Responses are JSON; the Stripe webhook request is verified from its raw bytes before event data is trusted. Tenant endpoints use x-tenant-id. Domain errors use stable JSON codes and messages.
+
+Fastify serves the HTTP API. Responses are JSON; the Stripe webhook request is verified from its raw bytes before its event data is trusted. Tenant endpoints use x-tenant-id. Domain errors use stable JSON codes and messages.
 
 ## `GET /health`
 
 **Purpose:** Process liveness check. **Headers/body:** None. **Success `200`:** `{ "status": "ok" }`. **Errors:** unexpected `500`. **Notes:** This endpoint does not check database readiness.
-
-## `POST /seed`
-
-**Purpose:** Idempotently create Free/Pro plans, a demo tenant, and a near-quota tenant for local demonstrations. **Headers/body:** No body; disabled outside local/test environments. **Success `200`:** IDs/names of seeded records and whether each was created or reused. **Errors:** `403` when disabled; validation/configuration `400`; unexpected `500`. **Notes:** Never a production administration API.
 
 ## POST /generate
 
@@ -137,7 +135,7 @@ The same tenant/key/hash replays the originally stored status and stable respons
 
 **Behavior:** The service reuses Tenant.stripeCustomerId when present. Otherwise it creates a Stripe customer with tenantId metadata and persists the returned customer ID. It then creates a Session with mode subscription, one configured STRIPE_PRO_PRICE_ID line item, tenantId in both Session and subscription metadata, and APP_BASE_URL-derived success/cancel URLs.
 
-Only sk_test_ secret keys are accepted by environment validation. Errors never return keys or Stripe exception details. Checkout creation does not change planId or subscriptionStatus and does not grant Pro access; only a future verified Phase 8 webhook may do that.
+Only sk_test_ secret keys are accepted by environment validation. Errors never return keys or Stripe exception details. Checkout creation does not change planId or subscriptionStatus and does not grant Pro access; only the verified webhook endpoint may do that.
 ## POST /webhooks/stripe
 
 **Status:** Implemented in Phase 8.
@@ -179,3 +177,4 @@ A duplicate event returns duplicate true. An unsupported but verified event retu
 | incomplete, incomplete_expired | Free | INCOMPLETE |
 
 No query parameter or unverified request field is used to choose a tenant. Errors do not expose webhook secrets or Stripe SDK details.
+

@@ -2,7 +2,7 @@
 
 ## Layered design
 
-Fastify routes/controllers translate HTTP headers, bodies, and service outcomes. Zod validates external input. Services coordinate business invariants and transactions. Repositories contain Prisma queries and always scope tenant-owned records by tenant ID. Configuration centralizes validated environment values and pinned pricing. Middleware provides tenant context and consistent JSON errors.
+Fastify routes/controllers translate HTTP headers, bodies, and service outcomes. Zod validates external input. Services coordinate business invariants and transactions. Repositories contain Prisma queries and always scope tenant-owned records by tenant ID. Configuration centralizes pinned pricing and Stripe validation. Routes map tenant headers and domain failures to consistent JSON errors.
 
 ```text
 route/controller -> service -> repository -> Prisma -> PostgreSQL
@@ -23,7 +23,7 @@ route/controller -> service -> repository -> Prisma -> PostgreSQL
 9. Record API-call and AI-token usage and store the original response atomically.
 10. Return the simulated generation response.
 
-The final transaction design in Phase 3 must prevent two concurrent requests from both claiming the same key or exceeding a quota from stale reads.
+Serializable transactions, unique constraints, and bounded retries prevent concurrent requests from double-claiming a key or consuming the same final quota slot.
 
 ## `GET /usage` read flow
 
@@ -47,7 +47,8 @@ Identity is `(tenantId, key)`, not the key globally. The request hash binds the 
 
 ## Error strategy
 
-Expected domain errors map to JSON with a stable code and message. Validation uses `400`, missing tenants use `404`, idempotency conflicts use `409`, exceeded quotas use `429`, and payment/upgrade-required outcomes may use `402`. Unexpected errors become a generic `500` and do not expose secrets or stack traces. Quota errors include quota type, current usage, limit, requested quantity, and suggested action.
+Expected domain errors map to JSON with a stable code and message. Validation uses `400`, missing tenants use `404`, idempotency conflicts use `409`, exceeded quotas use `429`. Unexpected errors become a generic `500` and do not expose secrets or stack traces. Quota errors include quota type, current usage, limit, requested quantity, and suggested action.
+
 
 
 
