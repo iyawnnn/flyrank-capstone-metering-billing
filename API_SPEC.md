@@ -39,10 +39,15 @@ All four fields are required nonnegative safe integers, unknown fields are rejec
         "apiCalls": 1,
         "aiTokens": 1800
       },
+      "cost": {
+        "apiCallMicroCents": 10,
+        "aiTokensMicroCents": 405,
+        "totalMicroCents": 415
+      },
       "message": "Simulated generation completed."
     }
 
-A new request writes exactly one API_CALL event with quantity 1, one AI_TOKENS event with the sum of all four categories, and one tenant-scoped idempotency response. Both events share the key and canonical SHA-256 request hash. Phase 3 stores costMicroCents as zero.
+A new request writes exactly one API_CALL event with quantity 1, one AI_TOKENS event with the sum of all four categories, and one tenant-scoped idempotency response. Both events share the key and canonical SHA-256 request hash. The API event stores 10 micro-cents. Token categories are priced separately using pinned per-million rates and each nonzero fractional category cost rounds up to the next micro-cent.
 
 **Errors:** 400 for missing headers or invalid body; 404 for an unknown tenant; 409 when the same tenant/key is reused with a different validated body; 429 when a projected monthly quota is exceeded; 500 for unexpected failures. Payment-required behavior is not active.
 
@@ -107,6 +112,7 @@ The same tenant/key/hash replays the originally stored status and stable respons
 **Success `200`:** `{ "received": true, "duplicate": false }`; duplicate delivery returns the same with `duplicate: true` and performs no second state transition.
 
 **Errors:** `400` missing/invalid signature or malformed payload; `500` transient processing failure so Stripe may retry. **Notes:** Raw-body middleware must precede normal JSON parsing. Supported types are `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Only verified events may update subscription/plan status; unhandled verified types are acknowledged without a domain update.
+
 
 
 

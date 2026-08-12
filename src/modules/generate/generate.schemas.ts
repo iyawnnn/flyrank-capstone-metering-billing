@@ -42,5 +42,11 @@ export interface GenerateResponse {
     apiCalls: 1;
     aiTokens: number;
   };
+  cost: {
+    apiCallMicroCents: number;
+    aiTokensMicroCents: number;
+    totalMicroCents: number;
+  };
   message: "Simulated generation completed.";
 }
+

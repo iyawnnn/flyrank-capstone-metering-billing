@@ -11,6 +11,10 @@ import { findTenantById } from "../tenants/tenant.repository.js";
 import { findIdempotencyRecord } from "./idempotency.service.js";
 import { createRequestHash } from "./request-hash.js";
 import { enforceMonthlyQuota } from "../quotas/quota.service.js";
+import {
+  calculateGenerationCost,
+  toSafeMoneyNumber,
+} from "../pricing/pricing.service.js";
 
 export class TenantNotFoundError extends Error {
   constructor() {
@@ -57,6 +61,11 @@ const parseStoredResponse = (value: Prisma.JsonValue): GenerateResponse => {
       apiCalls: 1,
       aiTokens: stored.usage.aiTokens,
     },
+    cost: {
+      apiCallMicroCents: stored.cost.apiCallMicroCents,
+      aiTokensMicroCents: stored.cost.aiTokensMicroCents,
+      totalMicroCents: stored.cost.totalMicroCents,
+    },
     message: "Simulated generation completed.",
   };
 };
@@ -101,6 +110,7 @@ export const meterGeneration = async (
 
           await enforceMonthlyQuota(transaction, tenant, aiTokens);
 
+          const cost = calculateGenerationCost(input.body);
           const response: GenerateResponse = {
             tenantId: input.tenantId,
             idempotencyKey: input.idempotencyKey,
@@ -108,6 +118,11 @@ export const meterGeneration = async (
             usage: {
               apiCalls: 1,
               aiTokens,
+            },
+            cost: {
+              apiCallMicroCents: toSafeMoneyNumber(cost.apiCallMicroCents),
+              aiTokensMicroCents: toSafeMoneyNumber(cost.aiTokensMicroCents),
+              totalMicroCents: toSafeMoneyNumber(cost.totalMicroCents),
             },
             message: "Simulated generation completed.",
           };
@@ -120,8 +135,8 @@ export const meterGeneration = async (
                 quantity: 1,
                 idempotencyKey: input.idempotencyKey,
                 requestHash,
-                costMicroCents: 0n,
-                metadata: { phase: 4, simulated: true },
+                costMicroCents: cost.apiCallMicroCents,
+                metadata: { phase: 5, simulated: true },
               },
               {
                 tenantId: input.tenantId,
@@ -129,9 +144,9 @@ export const meterGeneration = async (
                 quantity: aiTokens,
                 idempotencyKey: input.idempotencyKey,
                 requestHash,
-                costMicroCents: 0n,
+                costMicroCents: cost.aiTokensMicroCents,
                 metadata: {
-                  phase: 3,
+                  phase: 5,
                   simulated: true,
                   tokenBreakdown: input.body,
                 },
@@ -164,6 +179,9 @@ export const meterGeneration = async (
 
   throw new Error("Transaction retry limit reached.");
 };
+
+
+
 
 
 

@@ -82,3 +82,19 @@ Implemented integration coverage verifies:
 - A Pro tenant above Free thresholds remains allowed under Pro limits.
 - Successful idempotency replay happens before quota evaluation.
 - Concurrent requests at the last available API-call slot produce one success and one rejection.
+
+## Phase 5 pricing coverage
+
+Implemented deterministic tests verify:
+
+- One API call costs exactly 10 micro-cents.
+- One million normal input tokens cost 100,000 micro-cents.
+- One million cached input tokens cost 25,000 micro-cents.
+- One million output tokens cost 500,000 micro-cents.
+- Reasoning tokens use the output rate.
+- Mixed categories are ceiling-priced separately before summing.
+- A nonzero fractional cost in any category rounds up to one micro-cent.
+- All internal pricing outputs are bigint values.
+- POST /generate stores 10 and the exact token cost on its two events.
+- The response and exact idempotent replay contain the same cost summary.
+- Existing quota, idempotency, seed, and health behavior remains covered.

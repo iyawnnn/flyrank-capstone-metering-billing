@@ -21,7 +21,7 @@
 
 ## Phase 5: Cost calculation
 
-**Goal:** Produce deterministic integer costs per usage category. **Tasks:** pin micro-cent rates, separately price normal input/cached input/output/reasoning, price API calls, metadata, pure unit tests. **Gate:** hand-calculated fixtures match; no floating-point money. **Evidence:** config excerpt and focused test results.
+**Status:** Complete. **Goal:** Produce deterministic integer costs per usage category. **Delivered:** pinned BigInt micro-cent rates, separate normal/cached/output/reasoning token pricing, output-rate reasoning, API-call pricing, per-category ceiling division, stored event costs, and stable response/replay cost summaries. **Gate:** exact hand-calculated fixtures, tiny-usage rounding, persistence, replay, quota, and full regression tests pass. **Evidence:** Phase 5 unit/integration tests and database assertions.
 
 ## Phase 6: Usage summary endpoint
 
